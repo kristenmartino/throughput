@@ -121,6 +121,9 @@ const MOCK = (() => {
   for (const id in draw) { const d = DECKS.find(k => k.id === id); if (!d) errors.push('mock: deck ' + id + ' missing'); else if (d.questions.filter(q => q.mock).length < draw[id]) errors.push('mock: deck ' + id + ' has ' + d.questions.filter(q => q.mock).length + ' questions that stand alone, mock draws ' + draw[id]); }
   if (Object.values(draw).reduce((a, b) => a + b, 0) !== total) errors.push('mock: draw does not total 110');
   return { id: 'mock', title: 'Timed mock', status: 'Draft', minutes: 4 * 60 + 18, total, draw, order: secs.map(x => x.id),
+    lane: 'quality', laneShort: 'Quality', exam: 'ASQ CSSGB', dur: '4 h 18 min', route: '#mock', keys: { run: 'run', last: 'last' }, secLabel: 'Section',
+    intro: '110 questions in 4 hours 18 minutes, as on the computer-based exam: 100 scored and 10 unscored there; here every question counts, split across the six sections in the Body of Knowledge ratio.',
+    deckNote: 'Deck questions: drawn from the practice questions in the six decks, so you may have seen some before. A different draw each run.',
     scoring: 'ASQ reports a scaled score and certifies at 550 of a possible 750. The raw number of correct answers needed is set for each exam form by a Modified Angoff cut-score study and is not published, so this mock shows percent right by section and no pass line.',
     sources: ['asqexam', 'asqscore', 'asqgrade', 'bok'].map(k => SRC[k]) };
 })();
@@ -129,8 +132,8 @@ claim('mock', 'mock');
 // ---- Held-out mock pool (Phase 2b, approved Nov 24, 09:08 ET). Same rules as deck questions: four options, a why and a
 // whyNot for each wrong option, lesson and BoK code in its section, option-length limits and key spread per section.
 // The pool must hold exactly the mock's draw for each section, so a held-out mock uses every pool question once.
-MOCK.pool = (() => {
-  const P = require('./content/mock-pool.js'), CODE = { overview: 'OV', define: 'DF', measure: 'MS', analyze: 'AN', improve: 'IM', control: 'CO' }, out = {};
+function buildPool(MOCK, P, CODE) {
+  const out = {};
   for (const id of MOCK.order) {
     const dk = DECKS.find(k => k.id === id), list = P[id] || [], w = 'mock pool ' + id, pos = [0, 0, 0, 0];
     if (list.length !== MOCK.draw[id]) errors.push(w + ': ' + MOCK.draw[id] + ' questions needed (the draw), has ' + list.length);
@@ -159,7 +162,26 @@ MOCK.pool = (() => {
     MOCK.poolKeys = MOCK.poolKeys || {}; MOCK.poolKeys[id] = pos.join('/');
   }
   return out;
+}
+MOCK.pool = buildPool(MOCK, require('./content/mock-pool.js'), { overview: 'OV', define: 'DF', measure: 'MS', analyze: 'AN', improve: 'IM', control: 'CO' });
+
+// ---- CSCP timed mock (Phase 3b; decision 3B approved Nov 24, 09:50 ET). ASCM: 150 questions (130 scored, 20 unscored
+// pretest), 3.5 hours (Read, ASCM exam page). ASCM does not say how pretest items are spread, so all 150 count and the draw
+// per module is the deck size, which follows the ECM weights (largest remainder). Held-out pool by default, as Green Belt.
+const CSCP = (() => {
+  const secs = (L.sections['supply-chain'] || []).filter(x => x.kind === 'Deck'), draw = {};
+  secs.forEach(x => { const d = DECKS.find(k => k.id === x.id); draw[x.id] = d ? d.questions.length : 0; });
+  const total = Object.values(draw).reduce((a, b) => a + b, 0);
+  if (total !== 150) errors.push('CSCP mock: draw totals ' + total + ', not 150');
+  return { id: 'cscp-mock', title: 'CSCP timed mock', status: 'Draft', minutes: 210, total, draw, order: secs.map(x => x.id),
+    lane: 'supply-chain', laneShort: 'Supply chain', exam: 'ASCM CSCP', dur: '3 h 30 min', route: '#mock-cscp', keys: { run: 'cscpRun', last: 'cscpLast' }, secLabel: 'Module',
+    intro: '150 questions in 3 hours 30 minutes, as on the exam: 130 scored and 20 unscored pretest questions there; here every question counts, split across the eight modules by ASCM\'s published weights.',
+    deckNote: 'Deck questions: all 150 practice questions from the eight decks, so you have probably seen them. A new order each run.',
+    scoring: 'ASCM reports a scaled score from 200 to 350 and passes at 300. This app has found no published way to turn a count of right answers into that scale, so this mock shows percent right by module and no pass line.',
+    sources: ['cscpexam', 'cscpecm'].map(k => SRC[k]) };
 })();
+claim(CSCP.id, 'mock');
+CSCP.pool = buildPool(CSCP, require('./content/mock-pool-cscp.js'), { sc1: 'SC1', sc2: 'SC2', sc3: 'SC3', sc4: 'SC4', sc5: 'SC5', sc6: 'SC6', sc7: 'SC7', sc8: 'SC8' });
 
 // ---- Numbers and the Beer Game: JS against Python (math/check.js)
 const mc = require('./math/check.js').check(Array.from(used.values()));
@@ -248,7 +270,7 @@ const PUB = path.join(here, 'published-ids.json');
 const pub = JSON.parse(fs.readFileSync(PUB, 'utf8'));
 const now = { lanes: laneIds, sections: sectionIds, craft: craft.ids, sims: sims.ids,
   lessons: [].concat(...DECKS.map(d => d.lessons.map(l => l.id))), questions: [].concat(...DECKS.map(d => d.questions.map(q => q.id))),
-  cards: [].concat(...DECKS.map(d => d.cards.map(c => c.id))), decks: DECKS.map(d => d.id), games: [BEER.id, INVC.id, BNC.id], mocks: [MOCK.id], mockQuestions: [].concat(...Object.values(MOCK.pool).map(l => l.map(q => q.id))) };
+  cards: [].concat(...DECKS.map(d => d.cards.map(c => c.id))), decks: DECKS.map(d => d.id), games: [BEER.id, INVC.id, BNC.id], mocks: [MOCK.id, CSCP.id], mockQuestions: [].concat(...[MOCK, CSCP].map(m => [].concat(...Object.values(m.pool).map(l => l.map(q => q.id))))) };
 for (const k of Object.keys(pub)) if (k !== 'note' && !(k in now)) errors.push('published-ids.json has an unknown kind ' + k);
 for (const k of Object.keys(now)) for (const id of (pub[k] || [])) if (now[k].indexOf(id) === -1) errors.push('published ' + k + ' id ' + id + ' is missing; links depend on it');
 if (errors.length) { console.error(errors.join('\n')); process.exit(1); }
@@ -265,7 +287,7 @@ const ref = { average: mc.beer.all_average, benchSeat: mc.beer.bench_in_seat }; 
 const BG = require('./math/beer.js');
 const beer = { id: BEER.id, title: BEER.title, status: BEER.status, blurb: BEER.blurb, briefing: BEER.briefing, lesson: BEER.lesson, sources: BEER.sources.map(k => SRC[k]),
   refTeam2: { average: BG.stats(ref.average).team2, bench: BG.stats(mc.beer.all_bench).team2 }, benchAll2: BG.stats(mc.beer.all_bench).stages.map(s => s.cost2), benchTeam2: ref.benchSeat.map(g => BG.stats(g).team2) };
-const bank = { lanes: L.lanes, sections: L.sections, exam: L.exam, craft: craft.packets, runs: sims.runs, roleplays: sims.roleplays, kitVersion, decks: DECKS, beer, inventory, bottleneck, mock: MOCK };
+const bank = { lanes: L.lanes, sections: L.sections, exam: L.exam, craft: craft.packets, runs: sims.runs, roleplays: sims.roleplays, kitVersion, decks: DECKS, beer, inventory, bottleneck, mock: MOCK, mocks: { mock: MOCK, cscp: CSCP } };
 const LS = String.fromCharCode(0x2028), PS = String.fromCharCode(0x2029);
 const json = JSON.stringify(bank).replace(/<\//g, '<\\/').split(LS).join('\\u2028').split(PS).join('\\u2029');
 const tpl = read('index.src.html');

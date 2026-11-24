@@ -133,4 +133,47 @@ def compute_supply():
     o['sdPoolWrong'] = 400
     o['ssSep9'] = 9 * 1.645 * 100; o['ssPool9'] = 1.645 * 100 * 3; o['ssCutPct9'] = 1 - o['ssPool9'] / o['ssSep9']
     out.update({f'sc8.{k}': float(v) for k, v in o.items()})
+    # ---- mc (CSCP held-out mock pool)
+    o = {}
+    d = [210, 190, 230, 250]
+    for i, x in enumerate(d): o[f'd{i + 1}'] = x
+    o['ma3'] = (190 + 230 + 250) / 3; o['ma4'] = sum(d) / 4; o['wma'] = 0.5 * 250 + 0.3 * 230 + 0.2 * 190; o['wmaRev'] = 0.2 * 250 + 0.3 * 230 + 0.5 * 190
+    o.update(esF=220, esA=250, esAl=0.2); o['es'] = 220 + 0.2 * 30; o['esWrong'] = 250 + 0.2 * (220 - 250); o['esAl8'] = 220 + 0.8 * 30
+    A = [200, 196, 206, 210]; F = [192, 200, 200, 200]; e = [a - f for a, f in zip(A, F)]
+    for i in range(4): o[f'a{i + 1}'] = A[i]; o[f'f{i + 1}'] = F[i]; o[f'e{i + 1}'] = e[i]
+    o['sumE'] = sum(e); o['mad'] = sum(abs(x) for x in e) / 4; o['bias'] = sum(e) / 4; o['ts'] = sum(e) / o['mad']
+    o['mape'] = sum(abs(x) / a for x, a in zip(e, A)) / 4; o['mse'] = sum(x * x for x in e) / 4
+    o.update(qAvg=500, q3Avg=600, annual=2400); o['si3'] = 600 / 500; o['q3fc'] = 2400 / 4 * o['si3']; o['q3fcWrong'] = 2400 * o['si3']
+    pts = [(20, 10, 200), (50, 40, 600), (10, 50, 200)]; V = sum(p[2] for p in pts)
+    for i, (x, y, v) in enumerate(pts): o[f'x{i + 1}'] = x; o[f'y{i + 1}'] = y; o[f'v{i + 1}'] = v
+    o['cgX'] = sum(x * v for x, y, v in pts) / V; o['cgY'] = sum(y * v for x, y, v in pts) / V; o['avgX'] = sum(p[0] for p in pts) / 3; o['avgY'] = sum(p[1] for p in pts) / 3
+    o.update(price=80, freight=6, dutyRate=0.10, ins=1.2, broker=0.8, inland=2); o['duty'] = 0.10 * 80
+    o['landed'] = 80 + 6 + o['duty'] + 1.2 + 0.8 + 2; o['landedNoDuty'] = o['landed'] - o['duty']
+    o.update(dio=45, dso=30, dpo=40); o['c2c'] = 35; o['c2cWrong'] = 115
+    o.update(fixed=90000, vMake=15, pBuy=24, q=12000); o['be'] = 90000 / 9; o['beWrong'] = 90000 / 24
+    o['makeQ'] = 90000 + 15 * 12000; o['buyQ'] = 24 * 12000; o['saveQ'] = o['buyQ'] - o['makeQ']
+    o.update(wQ=0.5, wC=0.3, wD=0.2, avgA=4, avgB=4); o['sA'] = 0.5 * 5 + 0.3 * 3 + 0.2 * 4; o['sB'] = 0.5 * 4 + 0.3 * 5 + 0.2 * 3
+    o.update(tPrice=30, tFreight=3, tDef=0.05, tDefCost=40); o['tDefU'] = 0.05 * 40; o['tco'] = 30 + 3 + o['tDefU']
+    o.update(tgtCost=200000, tgtFee=20000, shB=0.7, shS=0.3, act=220000); o['over'] = 20000; o['feeAdj'] = 0.3 * 20000
+    o['fee'] = 20000 - o['feeAdj']; o['priceInc'] = 220000 + o['fee']; o['feeWrong'] = 20000 - 0.7 * 20000
+    o.update(gr3=80, oh=30, sr2=20); o['net3'] = 30; o['netNoSr'] = 50
+    o.update(D=12000, S=50, H=3); o['eoq'] = math.sqrt(2 * 12000 * 50 / 3); o['eoqNo2'] = math.sqrt(12000 * 50 / 3); o['ordersYr'] = 12000 / o['eoq']
+    o.update(dd=50, sdd=10, L=16, z=1.645); o['sdL'] = 10 * math.sqrt(16); o['ss'] = 1.645 * o['sdL']; o['rop'] = 50 * 16 + o['ss']; o['ssNoRoot'] = 1.645 * 10 * 16
+    abc = [500, 250, 90, 60, 40, 25, 15, 10, 6, 4]; at = sum(abc)
+    o['abcTot'] = at; o['abcTop2'] = 750 / at; o['abcBot5'] = sum(abc[5:]) / at
+    o.update(cogs=3600000, avgInv=600000); o['turns'] = 6; o['days'] = 365 / 6
+    o['hrs'] = 80; o.update(util=0.9, eff=0.95); o['rated'] = 80 * 0.9 * 0.95; o['ratedUtil'] = 80 * 0.9
+    o.update(kd=400, kL=0.5, kSafety=0.1, kC=50); o['kRaw'] = 400 * 0.5 * 1.1 / 50; o['kanbans'] = math.ceil(o['kRaw']); o['kNoSafety'] = 400 * 0.5 / 50
+    o.update(ccOk=47, ccN=50); o['ira'] = 47 / 50
+    o.update(ltlRate=15, shipLb=6000, nShip=3, ftl=2000); o['ltlAll'] = 3 * 6000 / 100 * 15; o['consSave'] = o['ltlAll'] - 2000; o['breakLb'] = 2000 / 15 * 100
+    o.update(flow=200, transit=20, uVal=150, carry=0.20, daySave=15); o['pipe'] = 4000; o['pipeSave'] = 150 * 0.2 / 365 * 15; o['pipeSaveWrong'] = 150 * 0.2 * 15
+    o.update(cRev=300000, cGm=0.25, cOrd=600, cOrdCost=60, cDel=300, cDelCost=90, cRet=15000); o['cGmD'] = 300000 * 0.25
+    o['cCts'] = 600 * 60 + 300 * 90 + 15000; o['cLoss'] = o['cCts'] - o['cGmD']
+    o.update(po1=0.96, po2=0.98, po3=0.99, po4=0.97); o['perfect'] = 0.96 * 0.98 * 0.99 * 0.97; o['perfectAvg'] = (0.96 + 0.98 + 0.99 + 0.97) / 4
+    o.update(scW1=0.5, scW2=0.3, scW3=0.2, scR1=90, scR2=80, scR3=95); o['score'] = 0.5 * 90 + 0.3 * 80 + 0.2 * 95; o['scoreAvg'] = (90 + 80 + 95) / 3
+    o.update(gain=150000, gBuyer=0.6, gSupp=0.4); o['gB'] = 150000 * 0.6; o['gS'] = 150000 * 0.4
+    o.update(p1=0.10, i1=800000, p2=0.02, i2=5000000, mCost=30000, mCut=0.5); o['el1'] = 0.1 * 800000; o['el2'] = 0.02 * 5000000; o['mSave'] = o['el2'] * 0.5; o['mNet'] = o['mSave'] - 30000
+    o.update(ttr=5, tts=3, wRev=400000); o['revRisk'] = 2 * 400000; o['revRiskWrong'] = 5 * 400000
+    o.update(nV=9, sdV=50, pz=1.645); o['ssSep'] = 9 * 1.645 * 50; o['sdPool'] = 50 * 3; o['ssPool'] = 1.645 * 150; o['cutPct'] = 1 - o['ssPool'] / o['ssSep']; o['sdPoolWrong'] = 450
+    out.update({f'mc.{k}': float(v) for k, v in o.items()})
     return out

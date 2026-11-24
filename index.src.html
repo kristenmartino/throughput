@@ -104,11 +104,13 @@ figure.lfig { margin: 0; display: grid; gap: 6px; }
   const beer = K.save.createStore({ localKey: APP + ':beer:v1', doc: 'beer', field: 'beer', normalize: keep(k => /^(game|last|seat-[0-3])$/.test(k)),
     onRemote() { if (SCREEN === 'beer' || SCREEN === 'home') host.keepScroll(); }, onStatus: () => status() });
   // Timed mock: the run in progress ('run') and the last result ('last'). Separate from deck progress.
-  const MOCK = BANK.mock;
+  // Two mocks (Green Belt, Phase 2; CSCP, Phase 3b). MOCK is the one on screen; each keeps its run and last result under
+  // its own keys in the 'mock' document (Green Belt: run, last; CSCP: cscpRun, cscpLast).
+  const MOCKS = BANK.mocks; let MOCK = MOCKS.mock;
   // Held-out pool (Phase 2b): mock-only questions, kept out of QS so they never enter practice, cards or deck progress.
-  const POOL = {}; MOCK.order.forEach(id => (MOCK.pool[id] || []).forEach(q => { POOL[q.id] = q; }));
+  const POOL = {}; Object.values(MOCKS).forEach(m => m.order.forEach(id => (m.pool[id] || []).forEach(q => { POOL[q.id] = q; })));
   const MQ = id => QS[id] || POOL[id];
-  const mock = K.save.createStore({ localKey: APP + ':mock:v1', doc: 'mock', field: 'mock', normalize: keep(k => k === 'run' || k === 'last'),
+  const mock = K.save.createStore({ localKey: APP + ':mock:v1', doc: 'mock', field: 'mock', normalize: keep(k => /^(run|last|cscpRun|cscpLast)$/.test(k)),
     onRemote() { if (SCREEN === 'mock' || SCREEN === 'lane') host.keepScroll(); }, onStatus: () => status() });
   // Inventory sim: the game in progress ('game': decisions so far), the last finished game and the best total.
   const inv = K.save.createStore({ localKey: APP + ':inv:v1', doc: 'inv', field: 'inv', normalize: keep(k => /^(game|last|best)$/.test(k)),
@@ -190,10 +192,10 @@ figure.lfig { margin: 0; display: grid; gap: 6px; }
       (BANK.exam[l.id] ? '<p class="note"><b>The exam:</b> ' + esc(BANK.exam[l.id]) + '</p>' : '') + '</section>' +
       '<section aria-labelledby="sc-h"><div class="section-h"><h2 id="sc-h">Sections</h2><span class="hint">Weighted as the exam is</span></div><div class="card" style="padding-block:4px">' +
       secs.map(s => { const d = deckById(s.id), st = d && deckStats(d), sim = s.kind === 'Simulation' && SIM[s.route], share = s.weight ? s.weight + '% of the exam' : s.questions ? s.questions + ' of 100 scored questions' : '';
-        return '<div class="secrow" id="' + esc(l.id + '-' + s.id) + '"><div class="top"><b>' + esc(s.title) + '</b>' + (d || sim || (s.id === 'mock' && MOCK) ? '<span class="k">' + esc(s.kind) + '</span>' : '<span class="soon">Phase ' + s.phase + '</span>') + '</div>' +
+        return '<div class="secrow" id="' + esc(l.id + '-' + s.id) + '"><div class="top"><b>' + esc(s.title) + '</b>' + (d || sim || (s.mock && MOCKS[s.mock]) ? '<span class="k">' + esc(s.kind) + '</span>' : '<span class="soon">Phase ' + s.phase + '</span>') + '</div>' +
           (d ? '<div class="items">' + itemRow('#deck-' + d.id, d.title + ' deck', share + ' · ' + d.lessons.length + ' lessons · ' + st.right + ' of ' + st.n + ' right', 'Draft') + '</div>'
             : sim ? '<div class="items">' + itemRow(s.route, sim[0].title, sim[1](), sim[0].status) + '</div>'
-            : s.id === 'mock' && MOCK ? '<div class="items">' + itemRow('#mock', MOCK.title, mockMeta(), MOCK.status) + '</div>'
+            : s.mock && MOCKS[s.mock] ? '<div class="items">' + itemRow(MOCKS[s.mock].route, MOCKS[s.mock].title, mockMeta(MOCKS[s.mock]), MOCKS[s.mock].status) + '</div>'
             : '<span class="k">' + esc(s.kind) + (share ? ' · ' + share : '') + ' · not built yet</span>') + '</div>'; }).join('') +
       '</div></section>' + foot() + '</main>';
   }
@@ -348,22 +350,23 @@ figure.lfig { margin: 0; display: grid; gap: 6px; }
   const shuffle = a => { a = a.slice(); for (let i = a.length - 1; i > 0; i--) { const j = Math.floor(Math.random() * (i + 1)); [a[i], a[j]] = [a[j], a[i]]; } return a; };
   function drawMock(pool) { return [].concat(...MOCK.order.map(id => shuffle(pool === 'decks' ? deckById(id).questions.filter(q => q.mock).map(q => q.id) : (MOCK.pool[id] || []).map(q => q.id)).slice(0, MOCK.draw[id]))); }
   const poolOf = v => v && v.pool === 'decks' ? 'decks' : 'held';
-  const run = () => { const v = mock.get('run'); return v && !v.done && Array.isArray(v.ids) ? JSON.parse(JSON.stringify(v)) : undefined; };
-  const putRun = r => { r.ts = Date.now(); mock.put('run', r); };
-  const msLeft = r => MOCK.minutes * 60000 - ((r.pausedAt || Date.now()) - r.start - (r.pausedMs || 0));
+  const runOf = m => { const v = mock.get(m.keys.run); return v && !v.done && Array.isArray(v.ids) ? JSON.parse(JSON.stringify(v)) : undefined; };
+  const run = () => runOf(MOCK), lastOf = m => mock.get(m.keys.last);
+  const putRun = r => { r.ts = Date.now(); mock.put(MOCK.keys.run, r); };
+  const msLeft = (r, m) => (m || MOCK).minutes * 60000 - ((r.pausedAt || Date.now()) - r.start - (r.pausedMs || 0));
   const clock = ms => { ms = Math.max(0, ms); const s = Math.floor(ms / 1000); return Math.floor(s / 3600) + ':' + String(Math.floor(s / 60) % 60).padStart(2, '0') + ':' + String(s % 60).padStart(2, '0'); };
   const pct = (a, b) => b ? Math.round(100 * a / b) + '%' : '—';
-  const secTitle = id => { const s = (SECTIONS.quality || []).find(x => x.id === id); return s ? s.title : id; };
-  function mockMeta() { const r = run(), last = mock.get('last');
-    return r ? 'In progress · ' + clock(msLeft(r)) + ' left · ' + Object.keys(r.picks).length + ' of ' + r.ids.length + ' answered'
-      : MOCK.total + ' questions · 4 h 18 min' + (last && last.total ? ' · last: ' + last.right + ' of ' + last.total + ' (' + pct(last.right, last.total) + ')' : ''); }
+  const secTitle = id => { const s = (SECTIONS[MOCK.lane] || []).find(x => x.id === id); return s ? s.title : id; };
+  function mockMeta(m) { const r = runOf(m), last = lastOf(m);
+    return r ? 'In progress · ' + clock(msLeft(r, m)) + ' left · ' + Object.keys(r.picks).length + ' of ' + r.ids.length + ' answered'
+      : m.total + ' questions · ' + m.dur + (last && last.total ? ' · last: ' + last.right + ' of ' + last.total + ' (' + pct(last.right, last.total) + ')' : ''); }
   function finishMock(r) {
     const used = Math.min(MOCK.minutes * 60000, (r.pausedAt || Date.now()) - r.start - (r.pausedMs || 0)), by = {};
     MOCK.order.forEach(id => { by[id] = [0, 0]; });
     r.ids.forEach(id => { const q = MQ(id); by[q.deck][1]++; if (r.picks[id] === q.answer) by[q.deck][0]++; });
     const right = r.ids.filter(id => r.picks[id] === MQ(id).answer).length;
-    mock.put('last', { ts: Date.now(), pool: r.pool || 'decks', total: r.ids.length, right, by, ids: r.ids, picks: r.picks, flags: r.flags, usedMs: used, timedOut: msLeft(r) <= 0 });
-    mock.put('run', { ts: Date.now(), done: true });
+    mock.put(MOCK.keys.last, { ts: Date.now(), pool: r.pool || 'decks', total: r.ids.length, right, by, ids: r.ids, picks: r.picks, flags: r.flags, usedMs: used, timedOut: msLeft(r) <= 0 });
+    mock.put(MOCK.keys.run, { ts: Date.now(), done: true });
     host.go('mock', { results: true });
   }
   let TICK = null;
@@ -382,14 +385,14 @@ figure.lfig { margin: 0; display: grid; gap: 6px; }
     const r = run();
     if (r && msLeft(r) <= 0) return finishMock(r);
     if (r) return VIEW.review ? renderMockReview(r) : renderMockQuestion(r);
-    const last = mock.get('last');
+    const last = lastOf(MOCK);
     if (VIEW.results && last && last.total) return renderMockResults(last);
-    app.innerHTML = host.header(MOCK.title, 'lane', 'quality', 'Back to the Quality lane', 'Draft') + '<main class="wrap" style="display:grid;gap:12px">' +
-      '<section class="card prose" style="display:grid;gap:10px"><div class="row"><span class="cchip draft">Draft</span><span class="lvchip">ASQ CSSGB · ' + MOCK.total + ' questions · 4 h 18 min</span></div>' +
-      '<p>' + MOCK.total + ' questions in 4 hours 18 minutes, as on the computer-based exam: 100 scored and 10 unscored there; here every question counts, split across the six sections in the Body of Knowledge ratio.</p>' +
+    app.innerHTML = host.header(MOCK.title, 'lane', MOCK.lane, 'Back to the ' + MOCK.laneShort + ' lane', 'Draft') + '<main class="wrap" style="display:grid;gap:12px">' +
+      '<section class="card prose" style="display:grid;gap:10px"><div class="row"><span class="cchip draft">Draft</span><span class="lvchip">' + esc(MOCK.exam) + ' · ' + MOCK.total + ' questions · ' + MOCK.dur + '</span></div>' +
+      '<p>' + esc(MOCK.intro) + '</p>' +
       '<div class="row" role="radiogroup" aria-label="Question pool">' + [['held', 'Held-out questions'], ['decks', 'Deck questions']].map(([k, t]) => '<button class="tog" role="radio" data-act="mock-pool" data-id="' + k + '" aria-pressed="' + (poolOf(VIEW) === k) + '" aria-checked="' + (poolOf(VIEW) === k) + '">' + t + '</button>').join('') + '</div>' +
-      '<p class="note" id="mock-pool-note">' + (poolOf(VIEW) === 'held' ? 'Held-out: ' + MOCK.total + ' questions that appear only here, never in lessons, practice or cards, so the score is not inflated by questions you have already seen. Each run uses all of them, in a new order.' : 'Deck questions: drawn from the practice questions in the six decks, so you may have seen some before. A different draw each run.') + '</p>' +
-      '<div class="scroll"><table class="t"><thead><tr><th>Section</th><th>Questions</th></tr></thead><tbody>' + MOCK.order.map(id => '<tr><td>' + esc(secTitle(id)) + '</td><td>' + MOCK.draw[id] + '</td></tr>').join('') + '</tbody></table></div>' +
+      '<p class="note" id="mock-pool-note">' + (poolOf(VIEW) === 'held' ? 'Held-out: ' + MOCK.total + ' questions that appear only here, never in lessons, practice or cards, so the score is not inflated by questions you have already seen. Each run uses all of them, in a new order.' : esc(MOCK.deckNote)) + '</p>' +
+      '<div class="scroll"><table class="t" id="mock-draw"><thead><tr><th>' + MOCK.secLabel + '</th><th>Questions</th></tr></thead><tbody>' + MOCK.order.map(id => '<tr><td>' + esc(secTitle(id)) + '</td><td>' + MOCK.draw[id] + '</td></tr>').join('') + '</tbody></table></div>' +
       '<p>The clock keeps running if you close the page and comes back with your answers, on this device or, when saved to your account, another one. You can flag questions and see them all on a review screen before you submit. At 0:00:00 the mock submits itself.</p>' +
       '<p class="note">' + esc(MOCK.scoring) + '</p>' +
       '<button class="tog" data-act="mock-pause-opt" aria-pressed="' + !!VIEW.allowPause + '">Allow pausing (the real exam does not)</button>' +
@@ -434,18 +437,18 @@ figure.lfig { margin: 0; display: grid; gap: 6px; }
   }
   function renderMockResults(last) {
     const misses = last.ids.filter(id => MQ(id) && last.picks[id] !== MQ(id).answer);
-    app.innerHTML = host.header('Mock result', 'lane', 'quality', 'Back to the Quality lane', 'Draft') + '<main class="wrap" style="display:grid;gap:12px">' +
+    app.innerHTML = host.header('Mock result', 'lane', MOCK.lane, 'Back to the ' + MOCK.laneShort + ' lane', 'Draft') + '<main class="wrap" style="display:grid;gap:12px">' +
       '<section class="card" style="display:grid;gap:10px"><div class="row"><span class="cchip draft">Draft</span><span class="k">' + (last.timedOut ? 'Time ran out' : 'Submitted') + ' · ' + clock(last.usedMs) + ' used · ' + (poolOf(last) === 'held' ? 'held-out questions' : 'deck questions') + '</span></div>' +
       '<div class="stat" id="mock-score"><div><span class="v">' + last.right + '/' + last.total + '</span><span class="l">right</span></div><div><span class="v">' + pct(last.right, last.total) + '</span><span class="l">percent right</span></div></div>' +
       '<p class="note">' + esc(MOCK.scoring) + '</p>' +
-      '<div class="scroll"><table class="t" id="mock-by"><thead><tr><th>Section</th><th>Right</th><th>%</th></tr></thead><tbody>' + MOCK.order.map(id => { const b = (last.by || {})[id] || [0, 0]; return '<tr><td><a href="#deck-' + esc(id) + '">' + esc(secTitle(id)) + '</a></td><td>' + b[0] + '/' + b[1] + '</td><td>' + pct(b[0], b[1]) + '</td></tr>'; }).join('') + '</tbody></table></div></section>' +
+      '<div class="scroll"><table class="t" id="mock-by"><thead><tr><th>' + MOCK.secLabel + '</th><th>Right</th><th>%</th></tr></thead><tbody>' + MOCK.order.map(id => { const b = (last.by || {})[id] || [0, 0]; return '<tr><td><a href="#deck-' + esc(id) + '">' + esc(secTitle(id)) + '</a></td><td>' + b[0] + '/' + b[1] + '</td><td>' + pct(b[0], b[1]) + '</td></tr>'; }).join('') + '</tbody></table></div></section>' +
       '<section aria-labelledby="mm-h"><div class="section-h"><h2 id="mm-h">Missed questions</h2><span class="hint">' + misses.length + ' · open one for the answer and why</span></div><div class="card" style="display:grid;gap:8px">' +
       (misses.length ? '<div id="mock-misses" style="display:grid;gap:8px">' + misses.map(id => { const q = MQ(id), l = LESSONS[q.lesson], p = last.picks[id];
         return '<details class="miss"><summary><span class="qid">' + esc(id) + '</span> ' + esc(l.title) + ' <span class="k">' + (p === undefined ? 'not answered' : 'you picked ' + 'ABCD'[p] + ', answer ' + 'ABCD'[q.answer]) + '</span></summary>' +
           '<p class="stem">' + esc(q.stem) + '</p><ol class="mopts" type="A">' + q.options.map((o, j) => '<li class="' + (j === q.answer ? 'is-right' : j === p ? 'is-wrong' : '') + '">' + esc(o) + (j === q.answer ? ' <span class="k">answer</span>' : j === p ? ' <span class="k">your pick</span>' : '') + '</li>').join('') + '</ol>' +
           '<p class="why"><b>Why:</b> ' + esc(q.why) + '</p>' + (p !== undefined && q.whyNot[p] ? '<p class="why"><b>Your pick:</b> ' + esc(q.whyNot[p]) + '</p>' : '') +
           '<p><a href="#lesson-' + esc(q.lesson) + '">Review the lesson: ' + esc(l.title) + '</a></p></details>'; }).join('') + '</div>' : '<p class="note">None.</p>') + '</div></section>' +
-      '<div class="row"><button class="btn btn-primary" data-act="mock-start">Start a new mock</button><a class="btn" href="#lane-quality">Back to the lane</a></div><p class="note" id="mock-saved">' + esc(mock.statusText()) + '</p>' + foot() + '</main>';
+      '<div class="row"><button class="btn btn-primary" data-act="mock-start">Start a new mock</button><a class="btn" href="#lane-' + MOCK.lane + '">Back to the lane</a></div><p class="note" id="mock-saved">' + esc(mock.statusText()) + '</p>' + foot() + '</main>';
   }
 
   // ---- Inventory sim (app-side engine, math/inventory.js; Phase 3, approved Nov 24)
@@ -642,7 +645,7 @@ figure.lfig { margin: 0; display: grid; gap: 6px; }
     'beer-same'() { const g = game(); placeOrder(g && g.orders && g.orders.length ? g.orders[g.orders.length - 1] : 4); },
     'mock-pause-opt'() { VIEW.allowPause = !VIEW.allowPause; host.keepScroll(); },
     'mock-pool'(t) { VIEW.pool = t.dataset.id === 'decks' ? 'decks' : 'held'; host.keepScroll(); },
-    'mock-start'() { const pool = poolOf(VIEW), ids = drawMock(pool); mock.put('run', { ts: Date.now(), pool, ids, picks: {}, flags: {}, start: Date.now(), allowPause: !!VIEW.allowPause, pausedAt: 0, pausedMs: 0, i: 0 }); host.go('mock', {}); },
+    'mock-start'() { const pool = poolOf(VIEW), ids = drawMock(pool); mock.put(MOCK.keys.run, { ts: Date.now(), pool, ids, picks: {}, flags: {}, start: Date.now(), allowPause: !!VIEW.allowPause, pausedAt: 0, pausedMs: 0, i: 0 }); host.go('mock', {}); },
     'mock-pick'(t) { const r = run(); if (!r || r.pausedAt) return; r.picks[t.dataset.id] = +t.dataset.j; putRun(r); host.keepScroll(); },
     'mock-flag'() { const r = run(); if (!r) return; const id = r.ids[r.i]; if (r.flags[id]) delete r.flags[id]; else r.flags[id] = 1; putRun(r); host.keepScroll(); },
     'mock-go'(t) { const r = run(); if (!r) return; r.i = Math.max(0, Math.min(r.ids.length - 1, +t.dataset.id)); putRun(r); VIEW.review = false; host.render(); window.scrollTo(0, 0); },
@@ -652,7 +655,7 @@ figure.lfig { margin: 0; display: grid; gap: 6px; }
     'mock-resume'() { const r = run(); if (!r || !r.pausedAt) return; r.pausedMs += Date.now() - r.pausedAt; r.pausedAt = 0; putRun(r); host.keepScroll(); },
     'mock-submit'() { const r = run(); if (!r) return; const left = r.ids.filter(id => r.picks[id] === undefined).length;
       if (left) host.confirm('Submit the mock?', left + ' question' + (left === 1 ? ' is' : 's are') + ' unanswered and will be marked wrong.', 'Submit', () => finishMock(r)); else finishMock(r); },
-    'mock-quit'() { host.confirm('Abandon this mock?', 'Your answers so far are discarded and nothing is scored.', 'Abandon', () => { mock.put('run', { ts: Date.now(), done: true }); host.go('mock', {}); }); },
+    'mock-quit'() { host.confirm('Abandon this mock?', 'Your answers so far are discarded and nothing is scored.', 'Abandon', () => { mock.put(MOCK.keys.run, { ts: Date.now(), done: true }); host.go('mock', {}); }); },
     'mock-last'() { host.go('mock', { results: true }); },
     'inv-start'() { const d = invRead(); if (!d) return; inv.put('game', { ts: Date.now(), dec: [d] }); VIEW = {}; host.go('inv', {}); },
     'inv-next'() { const g = invGame(), d = invRead(); if (!g || !d) return; g.dec.push(d); g.ts = Date.now(); inv.put('game', g); host.go('inv', {}); },
@@ -682,7 +685,7 @@ figure.lfig { margin: 0; display: grid; gap: 6px; }
     if (h === '#beer-game') { host.go('beer', {}); return true; }
     if (h === '#inventory-sim') { host.go('inv', {}); return true; }
     if (h === '#bottleneck-sim') { host.go('bn', {}); return true; }
-    if (h === '#mock' && MOCK) { host.go('mock', {}); return true; }
+    for (const m of Object.values(MOCKS)) if (h === m.route) { MOCK = m; host.go('mock', {}); return true; }
     return craft.route(h) || sims.route(h);
   }
   document.addEventListener('click', e => { const t = e.target.closest('[data-act]'); if (!t || t.disabled) return; const fn = ACT[t.dataset.act]; if (fn) fn(t, e); });

@@ -49,7 +49,7 @@ function ok(c, m) { if (c) pass++; else { fails.push(m); console.log('FAIL', m);
     await fit(page, tag + ' home');
     await page.goto(URL + '#lane-quality'); await page.waitForSelector('.secrow');
     await fit(page, tag + ' quality lane');
-    for (const h of ['#beer-game', '#mock'].concat(BANK.decks.flatMap(d => ['#deck-' + d.id, '#cards-' + d.id].concat(d.lessons.map(l => '#lesson-' + l.id))))) {
+    for (const h of ['#beer-game', '#mock', '#mock-cscp'].concat(BANK.decks.flatMap(d => ['#deck-' + d.id, '#cards-' + d.id].concat(d.lessons.map(l => '#lesson-' + l.id))))) {
       await page.goto(URL + h); await page.waitForTimeout(120); await fit(page, tag + ' ' + h);
     }
     // a lesson with every question answered (long why/whyNot text), practice, a flipped card
@@ -84,6 +84,9 @@ function ok(c, m) { if (c) pass++; else { fails.push(m); console.log('FAIL', m);
     await fit(page, tag + ' mock question');
     await page.locator('[data-act="mock-review"]').first().click(); await page.waitForSelector('.mgrid'); await fit(page, tag + ' mock review');
     await page.locator('[data-act="mock-submit"]').click(); await page.waitForSelector('.cfm'); await fit(page, tag + ' confirm dialog'); await page.locator('[data-cfm="ok"]').click(); await page.waitForSelector('#mock-by'); await fit(page, tag + ' mock result');
+    await page.goto(URL + '#mock-cscp'); await page.waitForSelector('[data-act="mock-start"]'); await fit(page, tag + ' CSCP mock intro');
+    await page.locator('[data-act="mock-start"]').click(); await page.waitForSelector('#mq'); await page.locator('[data-act="mock-pick"]').nth(2).click(); await fit(page, tag + ' CSCP mock question');
+    await page.locator('[data-act="mock-review"]').first().click(); await page.waitForSelector('.mgrid'); await page.locator('[data-act="mock-submit"]').click(); await page.locator('[data-cfm="ok"]').click(); await page.waitForSelector('#mock-by'); await fit(page, tag + ' CSCP mock result');
     await page.goto(URL + '#craft'); await page.waitForTimeout(150); await fit(page, tag + ' craft list');
     await page.goto(URL + '#sims'); await page.waitForTimeout(150); await fit(page, tag + ' sims list');
     await page.goto(URL); await page.waitForSelector('.lanebtn');
@@ -113,7 +116,7 @@ function ok(c, m) { if (c) pass++; else { fails.push(m); console.log('FAIL', m);
     ok(await page.locator('.secrow').count() === 0, 'route to a Later lane falls back to the lane picker');
     await page.goto(URL + '#lane-supply-chain'); await page.waitForSelector('.secrow');
     const scs = await page.locator('.secrow').evaluateAll(r => r.map(x => x.id));
-    ok(scs.join() === 'supply-chain-inventory,supply-chain-bottleneck,supply-chain-beer,supply-chain-sc1,supply-chain-sc2,supply-chain-sc3,supply-chain-sc4,supply-chain-sc5,supply-chain-sc6,supply-chain-sc7,supply-chain-sc8', 'supply chain sections ' + scs.join());
+    ok(scs.join() === 'supply-chain-inventory,supply-chain-bottleneck,supply-chain-beer,supply-chain-sc1,supply-chain-sc2,supply-chain-sc3,supply-chain-sc4,supply-chain-sc5,supply-chain-sc6,supply-chain-sc7,supply-chain-sc8,supply-chain-mock', 'supply chain sections ' + scs.join());
     const sct = await page.locator('.secrow').allTextContents();
     ok([10, 10, 17, 19, 9, 17, 10, 8].every((n, i) => sct[i + 3].indexOf(n + '% of the exam') !== -1), 'ASCM module weights shown');
     ok(/150 questions \(130 scored, 20 unscored pretest\), 3\.5 hours/.test(await page.locator('main').textContent()) && /pass at 300/.test(await page.locator('main').textContent()), 'CSCP exam facts shown');
@@ -327,6 +330,43 @@ function ok(c, m) { if (c) pass++; else { fails.push(m); console.log('FAIL', m);
     await page.locator('[data-act="mock-resume"]').click(); await page.waitForSelector('#mq');
     await page.locator('[data-act="mock-review"]').first().click(); await page.locator('[data-act="mock-quit"]').click(); await page.locator('[data-cfm="ok"]').click(); await page.waitForSelector('[data-act="mock-start"]');
     ok(!(await page.evaluate(() => { const r = window.__tp.mock.get('run'); return r && !r.done; })), 'mock: abandoning ends the run');
+    await ctx.close();
+  }
+
+  // ---- 2d2. CSCP timed mock (Phase 3b)
+  {
+    const { ctx, page } = await newPage(), C = BANK.mocks.cscp, Q = BANK.mocks.mock;
+    ok(C.total === 150 && C.minutes === 210 && JSON.stringify(C.draw) === JSON.stringify({ sc1: 15, sc2: 15, sc3: 26, sc4: 29, sc5: 13, sc6: 25, sc7: 15, sc8: 12 }), 'CSCP mock: 150 questions in 210 minutes, drawn by module weight ' + JSON.stringify(C.draw));
+    ok(/200 to 350/.test(C.scoring) && /no pass line/.test(C.scoring), 'CSCP mock: ASCM scoring stated, no pass line');
+    const all = [].concat(...Object.values(C.pool)), deckIds = new Set(BANK.decks.flatMap(d => d.questions.map(q => q.id)));
+    ok(all.length === 150 && new Set(all.map(q => q.id)).size === 150 && all.every(q => /^MK-SC[1-8]-\d\d$/.test(q.id) && !deckIds.has(q.id)), 'CSCP pool: 150 mock-only questions, none in a deck');
+    ok(C.order.every(id => C.pool[id].length === C.draw[id]), 'CSCP pool: counts per module equal the draw');
+    ok(all.every(q => q.options.concat([q.stem, q.why], Object.values(q.whyNot)).every(t => !/\{\{|NaN|undefined/.test(t))), 'CSCP pool: every placeholder filled');
+    await page.goto(URL + '#lane-supply-chain'); await page.waitForSelector('#supply-chain-mock');
+    ok(await page.locator('#supply-chain-mock a[href="#mock-cscp"]').count() === 1 && /150 questions · 3 h 30 min/.test(await page.locator('#supply-chain-mock').textContent()), 'lane links the CSCP mock');
+    await page.goto(URL + '#mock-cscp'); await page.waitForSelector('[data-act="mock-start"]');
+    ok(/ASCM CSCP/.test(await page.locator('main').textContent()) && await page.locator('#mock-draw tbody tr').count() === 8 && await page.locator('[data-act="mock-pool"][data-id="held"]').getAttribute('aria-pressed') === 'true', 'CSCP mock intro: eight modules, held-out by default');
+    ok(/Supply chain lane/.test(await page.locator('.playtop, header').first().innerHTML()), 'CSCP mock: back link goes to the Supply chain lane');
+    await page.locator('[data-act="mock-start"]').click(); await page.waitForSelector('#mq');
+    const run = await page.evaluate(() => window.__tp.mock.get('cscpRun'));
+    ok(run && run.pool === 'held' && run.ids.length === 150 && new Set(run.ids).size === 150 && run.ids.every(id => all.some(q => q.id === id)), 'CSCP mock: held-out run uses all 150 pool questions');
+    ok(!(await page.evaluate(() => { const r = window.__tp.mock.get('run'); return r && !r.done; })), 'CSCP mock: the Green Belt run is untouched');
+    ok(/^3:(30:00|29:5\d)$/.test(await page.locator('#mock-clock').textContent()), 'CSCP mock: clock starts at 3:30:00 (' + await page.locator('#mock-clock').textContent() + ')');
+    const q0 = all.find(q => q.id === run.ids[0]);
+    await page.locator('[data-act="mock-pick"][data-j="' + q0.answer + '"]').click();
+    await page.reload(); await page.waitForSelector('#mq');
+    ok(/Mock · 1 of 150/.test(await page.locator('.playtop .ttl').textContent()) && await page.locator('.opt.is-picked').count() === 1, 'CSCP mock: a reload keeps the run and the pick');
+    await page.locator('[data-act="mock-review"]').first().click(); await page.locator('[data-act="mock-submit"]').click(); await page.locator('[data-cfm="ok"]').click(); await page.waitForSelector('#mock-by');
+    ok((await page.locator('#mock-score .v').allTextContents()).join() === '1/150,1%', 'CSCP mock: score 1 of 150');
+    const cells = await page.locator('#mock-by tbody tr td:nth-child(2)').allTextContents();
+    ok(cells.length === 8 && cells.map(c => +c.split('/')[1]).join() === Object.values(C.draw).join(), 'CSCP mock: results by module for eight modules (' + cells.join(' ') + ')');
+    ok(/Module/.test(await page.locator('#mock-by thead').textContent()) && /200 to 350/.test(await page.locator('main').textContent()), 'CSCP mock result: module table and ASCM scoring note');
+    ok(await page.locator('#mock-misses details.miss').count() === 149 && await page.locator('#mock-misses a[href^="#lesson-sc"]').count() === 149, 'CSCP mock: each miss links to a supply chain lesson');
+    ok(await page.evaluate(() => window.__tp.mock.get('cscpLast').total) === 150 && !(await page.evaluate(() => window.__tp.mock.get('last'))), 'CSCP mock: result saved under its own key');
+    await page.goto(URL + '#lane-supply-chain'); await page.waitForSelector('#supply-chain-mock');
+    ok(/last: 1 of 150/.test(await page.locator('#supply-chain-mock').textContent()), 'lane shows the last CSCP mock result');
+    await page.goto(URL + '#lane-quality'); await page.waitForSelector('#quality-mock');
+    ok(!/last:/.test(await page.locator('#quality-mock').textContent()) && Q.total === 110, 'Green Belt mock row unaffected by the CSCP result');
     await ctx.close();
   }
 
