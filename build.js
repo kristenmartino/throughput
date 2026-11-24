@@ -114,6 +114,41 @@ const MOCK = (() => {
 })();
 claim('mock', 'mock');
 
+// ---- Held-out mock pool (Phase 2b, approved Nov 24, 09:08 ET). Same rules as deck questions: four options, a why and a
+// whyNot for each wrong option, lesson and BoK code in its section, option-length limits and key spread per section.
+// The pool must hold exactly the mock's draw for each section, so a held-out mock uses every pool question once.
+MOCK.pool = (() => {
+  const P = require('./content/mock-pool.js'), CODE = { overview: 'OV', define: 'DF', measure: 'MS', analyze: 'AN', improve: 'IM', control: 'CO' }, out = {};
+  for (const id of MOCK.order) {
+    const dk = DECKS.find(k => k.id === id), list = P[id] || [], w = 'mock pool ' + id, pos = [0, 0, 0, 0];
+    if (list.length !== MOCK.draw[id]) errors.push(w + ': ' + MOCK.draw[id] + ' questions needed (the draw), has ' + list.length);
+    out[id] = list.map((q, i) => {
+      const qw = 'mock question ' + q.id; claim(q.id, qw);
+      if (q.id !== 'MK-' + CODE[id] + '-' + String(i + 1).padStart(2, '0')) errors.push(qw + ': ids must run MK-' + CODE[id] + '-01.. in order');
+      if (!dk || !dk.lessons.some(l => l.id === q.lesson)) errors.push(qw + ': unknown lesson ' + q.lesson);
+      if (dk && !new RegExp('^' + dk.bok + '\\.').test(q.bok)) errors.push(qw + ': BoK code ' + q.bok + ' is not in section ' + (dk && dk.bok));
+      if (LEVELS.indexOf(q.level) === -1) errors.push(qw + ': level must be one of ' + LEVELS.join(', '));
+      if (!Array.isArray(q.options) || q.options.length !== 4 || !(q.answer >= 0 && q.answer < 4) || !q.why || words(q.stem) < 6) errors.push(qw + ': stem, four options, an answer and a why');
+      for (let j = 0; j < 4; j++) { if (j !== q.answer && !(q.whyNot && q.whyNot[j])) errors.push(qw + ': option ' + j + ' needs a whyNot'); }
+      if (q.whyNot && q.whyNot[q.answer]) errors.push(qw + ': the answer has a whyNot');
+      pos[q.answer]++;
+      const o = { id: q.id, deck: id, held: true, lesson: q.lesson, bok: q.bok, level: q.level, status: q.status || 'Draft', stem: fill(q.stem, qw), options: q.options.map(x => fill(x, qw)), answer: q.answer, why: fill(q.why, qw), whyNot: {} };
+      for (const j in q.whyNot) o.whyNot[j] = fill(q.whyNot[j], qw);
+      if (new Set(o.options).size !== 4) errors.push(qw + ': two options print the same text: ' + o.options.join(' | '));
+      const L = o.options.map(x => x.length), k = L[o.answer], other = Math.max(...L.filter((x, j) => j !== o.answer));
+      if (k > 1.3 * other) errors.push(qw + ': keyed option is ' + (k / other).toFixed(2) + ' times the longest distractor (limit 1.3)');
+      o.longest = L.every((x, j) => j === o.answer || x < k);
+      return o;
+    });
+    const n = list.length, lo = Math.floor(0.2 * n), hi = Math.ceil(0.3 * n), longest = out[id].filter(x => x.longest).length;
+    if (pos.some(k => k < lo || k > hi)) errors.push(w + ': keyed answers should spread over A–D, each ' + lo + '–' + hi + ' (got ' + pos.join('/') + ')');
+    if (longest > Math.floor(0.3 * n)) errors.push(w + ': keyed option is the longest in ' + longest + ' of ' + n + ' (limit ' + Math.floor(0.3 * n) + ')');
+    out[id].forEach(x => { delete x.longest; });
+    MOCK.poolKeys = MOCK.poolKeys || {}; MOCK.poolKeys[id] = pos.join('/');
+  }
+  return out;
+})();
+
 // ---- Numbers and the Beer Game: JS against Python (math/check.js)
 const mc = require('./math/check.js').check(Array.from(used.values()));
 if (mc.errs.length) errors.push('math cross-check failed:\n  ' + mc.errs.slice(0, 20).join('\n  '));
@@ -132,7 +167,7 @@ const PUB = path.join(here, 'published-ids.json');
 const pub = JSON.parse(fs.readFileSync(PUB, 'utf8'));
 const now = { lanes: laneIds, sections: sectionIds, craft: craft.ids, sims: sims.ids,
   lessons: [].concat(...DECKS.map(d => d.lessons.map(l => l.id))), questions: [].concat(...DECKS.map(d => d.questions.map(q => q.id))),
-  cards: [].concat(...DECKS.map(d => d.cards.map(c => c.id))), decks: DECKS.map(d => d.id), games: [BEER.id], mocks: [MOCK.id] };
+  cards: [].concat(...DECKS.map(d => d.cards.map(c => c.id))), decks: DECKS.map(d => d.id), games: [BEER.id], mocks: [MOCK.id], mockQuestions: [].concat(...Object.values(MOCK.pool).map(l => l.map(q => q.id))) };
 for (const k of Object.keys(pub)) if (k !== 'note' && !(k in now)) errors.push('published-ids.json has an unknown kind ' + k);
 for (const k of Object.keys(now)) for (const id of (pub[k] || [])) if (now[k].indexOf(id) === -1) errors.push('published ' + k + ' id ' + id + ' is missing; links depend on it');
 if (errors.length) { console.error(errors.join('\n')); process.exit(1); }
