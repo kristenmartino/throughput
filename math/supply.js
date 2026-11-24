@@ -131,6 +131,15 @@ function computeSupply() {
     o.qLoss = -o.qProf; o.gain = 200000; o.gainShare = 0.5; o.gainEach = o.gain * o.gainShare;
     S.sc6 = o;
   }
+  // ---- sc8: postponement pooling
+  {
+    const o = {};
+    o.nVar = 4; o.sdVar = 100; o.z = 1.645;
+    o.ssSep = o.nVar * o.z * o.sdVar; o.sdPool = o.sdVar * Math.sqrt(o.nVar); o.ssPool = o.z * o.sdPool; o.ssCut = o.ssSep - o.ssPool; o.ssCutPct = o.ssCut / o.ssSep;
+    o.sdPoolWrong = o.sdVar * o.nVar;
+    o.nVar9 = 9; o.ssSep9 = o.nVar9 * o.z * o.sdVar; o.ssPool9 = o.z * o.sdVar * Math.sqrt(o.nVar9); o.ssCutPct9 = 1 - o.ssPool9 / o.ssSep9;
+    S.sc8 = o;
+  }
   return S;
 }
 module.exports = { computeSupply };

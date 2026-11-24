@@ -127,4 +127,10 @@ def compute_supply():
     o['score2'] = 0.40 * 92 + 0.35 * 95 + 0.25 * 90; o['scoreUp'] = o['score2'] - o['score']
     o['qLoss'] = -o['qProf']; o.update(gain=200000, gainShare=0.5); o['gainEach'] = 100000
     out.update({f'sc6.{k}': float(v) for k, v in o.items()})
+    # ---- sc8
+    o = dict(nVar=4, sdVar=100, z=1.645, nVar9=9)
+    o['ssSep'] = 4 * 1.645 * 100; o['sdPool'] = 100 * math.sqrt(4); o['ssPool'] = 1.645 * o['sdPool']; o['ssCut'] = o['ssSep'] - o['ssPool']; o['ssCutPct'] = o['ssCut'] / o['ssSep']
+    o['sdPoolWrong'] = 400
+    o['ssSep9'] = 9 * 1.645 * 100; o['ssPool9'] = 1.645 * 100 * 3; o['ssCutPct9'] = 1 - o['ssPool9'] / o['ssSep9']
+    out.update({f'sc8.{k}': float(v) for k, v in o.items()})
     return out
