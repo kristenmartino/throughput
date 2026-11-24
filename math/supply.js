@@ -84,6 +84,25 @@ function computeSupply() {
     o.dio = 60; o.dso = 45; o.dpo = 50; o.c2c = o.dio + o.dso - o.dpo; o.c2cWrong = o.dio + o.dso + o.dpo; o.c2cDpo65 = o.dio + o.dso - 65;
     S.sc2 = o;
   }
+  // ---- sc3: sourcing
+  {
+    const o = {};
+    o.fixed = 60000; o.vMake = 12; o.pBuy = 18; o.be = o.fixed / (o.pBuy - o.vMake); o.beWrong = o.fixed / o.pBuy;
+    o.qLo = 8000; o.makeLo = o.fixed + o.vMake * o.qLo; o.buyLo = o.pBuy * o.qLo; o.saveLo = o.makeLo - o.buyLo;
+    o.qHi = 15000; o.makeHi = o.fixed + o.vMake * o.qHi; o.buyHi = o.pBuy * o.qHi; o.saveHi = o.buyHi - o.makeHi;
+    const w = [0.40, 0.30, 0.20, 0.10], sc = { A: [4, 3, 5, 3], B: [3, 5, 4, 4], C: [5, 3, 3, 5] };
+    ['wQ', 'wP', 'wD', 'wS'].forEach((k, i) => { o[k] = w[i]; });
+    for (const k of ['A', 'B', 'C']) { sc[k].forEach((v, i) => { o['s' + k + i] = v; }); o['ws' + k] = sum(sc[k].map((v, i) => v * w[i])); o['avg' + k] = sum(sc[k]) / 4; }
+    o.xPrice = 50; o.xFreight = 2; o.xDef = 0.04; o.yPrice = 46; o.yFreight = 4.5; o.yDef = 0.08; o.defCost = 25; o.yExp = 1.5; o.vol = 20000;
+    o.xDefU = o.xDef * o.defCost; o.yDefU = o.yDef * o.defCost;
+    o.xTco = o.xPrice + o.xFreight + o.xDefU; o.yTco = o.yPrice + o.yFreight + o.yDefU + o.yExp;
+    o.tcoGapU = o.yTco - o.xTco; o.tcoGapYr = o.tcoGapU * o.vol; o.priceGapYr = (o.xPrice - o.yPrice) * o.vol; o.priceGapPct = (o.xPrice - o.yPrice) / o.xPrice;
+    o.yNoDef = o.yPrice + o.yFreight + o.yExp;   // forgets defects
+    o.tgtCost = 100000; o.tgtFee = 10000; o.shareBuyer = 0.8; o.shareSeller = 0.2; o.actCost = 90000;
+    o.underrun = o.tgtCost - o.actCost; o.sellerGain = o.shareSeller * o.underrun; o.fee = o.tgtFee + o.sellerGain; o.priceInc = o.actCost + o.fee;
+    o.feeWrong = o.tgtFee + o.shareBuyer * o.underrun; o.buyerSave = o.tgtCost + o.tgtFee - o.priceInc;
+    S.sc3 = o;
+  }
   return S;
 }
 module.exports = { computeSupply };

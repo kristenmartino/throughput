@@ -89,4 +89,23 @@ def compute_supply():
     o['offPrem'] = o['landed'] / 45 - 1; o['priceGap'] = (45 - 40) / 45
     o.update(dio=60, dso=45, dpo=50); o['c2c'] = 60 + 45 - 50; o['c2cWrong'] = 60 + 45 + 50; o['c2cDpo65'] = 60 + 45 - 65
     out.update({f'sc2.{k}': float(v) for k, v in o.items()})
+    # ---- sc3
+    o = dict(fixed=60000, vMake=12, pBuy=18, qLo=8000, qHi=15000)
+    o['be'] = 60000 / 6; o['beWrong'] = 60000 / 18
+    o['makeLo'] = 60000 + 12 * 8000; o['buyLo'] = 18 * 8000; o['saveLo'] = o['makeLo'] - o['buyLo']
+    o['makeHi'] = 60000 + 12 * 15000; o['buyHi'] = 18 * 15000; o['saveHi'] = o['buyHi'] - o['makeHi']
+    w = [0.40, 0.30, 0.20, 0.10]; sc = {'A': [4, 3, 5, 3], 'B': [3, 5, 4, 4], 'C': [5, 3, 3, 5]}
+    for k, v in zip(['wQ', 'wP', 'wD', 'wS'], w): o[k] = v
+    for k, vals in sc.items():
+        for i, v in enumerate(vals): o[f's{k}{i}'] = v
+        o[f'ws{k}'] = sum(a * b for a, b in zip(vals, w)); o[f'avg{k}'] = sum(vals) / 4
+    o.update(xPrice=50, xFreight=2, xDef=0.04, yPrice=46, yFreight=4.5, yDef=0.08, defCost=25, yExp=1.5, vol=20000)
+    o['xDefU'] = 0.04 * 25; o['yDefU'] = 0.08 * 25
+    o['xTco'] = 50 + 2 + o['xDefU']; o['yTco'] = 46 + 4.5 + o['yDefU'] + 1.5
+    o['tcoGapU'] = o['yTco'] - o['xTco']; o['tcoGapYr'] = o['tcoGapU'] * 20000; o['priceGapYr'] = 4 * 20000; o['priceGapPct'] = 4 / 50
+    o['yNoDef'] = 46 + 4.5 + 1.5
+    o.update(tgtCost=100000, tgtFee=10000, shareBuyer=0.8, shareSeller=0.2, actCost=90000)
+    o['underrun'] = 10000; o['sellerGain'] = 0.2 * 10000; o['fee'] = 10000 + o['sellerGain']; o['priceInc'] = 90000 + o['fee']
+    o['feeWrong'] = 10000 + 0.8 * 10000; o['buyerSave'] = 110000 - o['priceInc']
+    out.update({f'sc3.{k}': float(v) for k, v in o.items()})
     return out
