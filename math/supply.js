@@ -186,7 +186,7 @@ function computeSupply() {
     o.scW1 = 0.5; o.scW2 = 0.3; o.scW3 = 0.2; o.scR1 = 90; o.scR2 = 80; o.scR3 = 95; o.score = o.scW1 * o.scR1 + o.scW2 * o.scR2 + o.scW3 * o.scR3; o.scoreAvg = (o.scR1 + o.scR2 + o.scR3) / 3;
     o.gain = 150000; o.gBuyer = 0.6; o.gSupp = 0.4; o.gB = o.gain * o.gBuyer; o.gS = o.gain * o.gSupp;
     // sc7 risk
-    o.p1 = 0.10; o.i1 = 800000; o.e1 = o.p1 * o.i1; o.p2 = 0.02; o.i2 = 5000000; o.e2 = o.p2 * o.i2; o.mCost = 30000; o.mCut = 0.5; o.mSave = o.e2 * o.mCut; o.mNet = o.mSave - o.mCost;
+    o.p1 = 0.10; o.i1 = 800000; o.el1 = o.p1 * o.i1; o.p2 = 0.02; o.i2 = 5000000; o.el2 = o.p2 * o.i2; o.mCost = 30000; o.mCut = 0.5; o.mSave = o.el2 * o.mCut; o.mNet = o.mSave - o.mCost;
     o.ttr = 5; o.tts = 3; o.wRev = 400000; o.revRisk = (o.ttr - o.tts) * o.wRev; o.revRiskWrong = o.ttr * o.wRev;
     // sc8 pooling
     o.nV = 9; o.sdV = 50; o.pz = 1.645; o.ssSep = o.nV * o.pz * o.sdV; o.sdPool = o.sdV * Math.sqrt(o.nV); o.ssPool = o.pz * o.sdPool; o.cutPct = 1 - o.ssPool / o.ssSep; o.sdPoolWrong = o.sdV * o.nV;

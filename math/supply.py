@@ -172,7 +172,7 @@ def compute_supply():
     o.update(po1=0.96, po2=0.98, po3=0.99, po4=0.97); o['perfect'] = 0.96 * 0.98 * 0.99 * 0.97; o['perfectAvg'] = (0.96 + 0.98 + 0.99 + 0.97) / 4
     o.update(scW1=0.5, scW2=0.3, scW3=0.2, scR1=90, scR2=80, scR3=95); o['score'] = 0.5 * 90 + 0.3 * 80 + 0.2 * 95; o['scoreAvg'] = (90 + 80 + 95) / 3
     o.update(gain=150000, gBuyer=0.6, gSupp=0.4); o['gB'] = 150000 * 0.6; o['gS'] = 150000 * 0.4
-    o.update(p1=0.10, i1=800000, p2=0.02, i2=5000000, mCost=30000, mCut=0.5); o['e1'] = 0.1 * 800000; o['e2'] = 0.02 * 5000000; o['mSave'] = o['e2'] * 0.5; o['mNet'] = o['mSave'] - 30000
+    o.update(p1=0.10, i1=800000, p2=0.02, i2=5000000, mCost=30000, mCut=0.5); o['el1'] = 0.1 * 800000; o['el2'] = 0.02 * 5000000; o['mSave'] = o['el2'] * 0.5; o['mNet'] = o['mSave'] - 30000
     o.update(ttr=5, tts=3, wRev=400000); o['revRisk'] = 2 * 400000; o['revRiskWrong'] = 5 * 400000
     o.update(nV=9, sdV=50, pz=1.645); o['ssSep'] = 9 * 1.645 * 50; o['sdPool'] = 50 * 3; o['ssPool'] = 1.645 * 150; o['cutPct'] = 1 - o['ssPool'] / o['ssSep']; o['sdPoolWrong'] = 450
     out.update({f'mc.{k}': float(v) for k, v in o.items()})
