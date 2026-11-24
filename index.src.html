@@ -69,6 +69,7 @@ figure.lfig { margin: 0; display: grid; gap: 6px; }
 .mgrid button.cur { outline: 2px solid var(--marker); outline-offset: 1px; }
 .opt.is-picked { border-color: var(--marker); box-shadow: inset 0 0 0 2px var(--marker); }
 .miss{border:1px solid var(--rule);border-radius:10px;padding:10px 12px}.miss summary{cursor:pointer;display:flex;flex-wrap:wrap;gap:6px;align-items:baseline;min-height:44px}.miss[open] summary{margin-bottom:8px}.mopts{margin:8px 0;padding-left:22px;display:grid;gap:4px}.mopts .is-right{font-weight:600}.mopts .is-wrong{text-decoration:line-through;text-decoration-thickness:1px}.miss .why{margin:6px 0}
+.invin{display:grid;grid-template-columns:1fr;gap:6px}.invin input{font:inherit;font-size:18px;padding:10px 12px;border:1px solid var(--rule);border-radius:10px;background:var(--sheet);color:var(--ink);max-width:220px}
 </style>
 </head>
 <body>
@@ -76,14 +77,15 @@ figure.lfig { margin: 0; display: grid; gap: 6px; }
 <script>const BANK = __BANK__;</script>
 <script>__STUDY_KIT__</script>
 <script>__BEER_ENGINE__</script>
+<script>__INV_ENGINE__</script>
 <script>
 (function () {
   'use strict';
-  const K = window.StudyKit, BG = window.BeerEngine, app = document.getElementById('app');
+  const K = window.StudyKit, BG = window.BeerEngine, IE = window.InventoryEngine, app = document.getElementById('app');
   const APP = 'throughput';
   const esc = s => String(s == null ? '' : s).replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', '\'': '&#39;' }[c]));
   const X = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" aria-hidden="true"><path d="M6 6l12 12M18 6L6 18"/></svg>';
-  const LANES = BANK.lanes, SECTIONS = BANK.sections, DECKS = BANK.decks, BEER = BANK.beer;
+  const LANES = BANK.lanes, SECTIONS = BANK.sections, DECKS = BANK.decks, BEER = BANK.beer, INV = BANK.inventory;
   const laneById = id => LANES.find(l => l.id === id);
   const deckById = id => DECKS.find(d => d.id === id);
   const QS = {}, LESSONS = {}, CARDS = {};
@@ -92,7 +94,7 @@ figure.lfig { margin: 0; display: grid; gap: 6px; }
   const money2 = h => '$' + (h / 2).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 });   // half-dollars to dollars
 
   // ---- stores (study-kit's save helper): prefs, deck progress, Beer Game
-  const status = () => { for (const [id, s] of [['prefs-saved', prefs], ['deck-saved', decks], ['beer-saved', beer], ['mock-saved', mock]]) { const el = document.getElementById(id); if (el && s) el.textContent = s.statusText(); } };
+  const status = () => { for (const [id, s] of [['prefs-saved', prefs], ['deck-saved', decks], ['beer-saved', beer], ['mock-saved', mock], ['inv-saved', inv]]) { const el = document.getElementById(id); if (el && s) el.textContent = s.statusText(); } };
   const keep = ok => x => { const o = {}; if (!x || typeof x !== 'object') return o; for (const k in x) if (ok(k) && x[k] && typeof x[k] === 'object' && typeof x[k].ts === 'number') o[k] = JSON.parse(JSON.stringify(x[k])); return o; };
   const prefs = K.save.createStore({ localKey: APP + ':prefs:v1', doc: 'prefs', field: 'prefs', normalize: keep(k => k === 'lane'), onRemote() { if (SCREEN === 'home') host.keepScroll(); }, onStatus: () => status() });
   const decks = K.save.createStore({ localKey: APP + ':decks:v1', doc: 'decks', field: 'decks', normalize: keep(k => !!(QS[k] || CARDS[k])),
@@ -106,7 +108,10 @@ figure.lfig { margin: 0; display: grid; gap: 6px; }
   const MQ = id => QS[id] || POOL[id];
   const mock = K.save.createStore({ localKey: APP + ':mock:v1', doc: 'mock', field: 'mock', normalize: keep(k => k === 'run' || k === 'last'),
     onRemote() { if (SCREEN === 'mock' || SCREEN === 'lane') host.keepScroll(); }, onStatus: () => status() });
-  prefs.loadLocal(); decks.loadLocal(); beer.loadLocal(); mock.loadLocal();
+  // Inventory sim: the game in progress ('game': decisions so far), the last finished game and the best total.
+  const inv = K.save.createStore({ localKey: APP + ':inv:v1', doc: 'inv', field: 'inv', normalize: keep(k => /^(game|last|best)$/.test(k)),
+    onRemote() { if (SCREEN === 'inv' || SCREEN === 'lane' || SCREEN === 'home') host.keepScroll(); }, onStatus: () => status() });
+  prefs.loadLocal(); decks.loadLocal(); beer.loadLocal(); mock.loadLocal(); inv.loadLocal();
   // A finished or abandoned game is stored as { done: true }, so other devices drop it too.
   const game = () => { const v = beer.get('game'); return v && !v.done ? v : undefined; };
 
@@ -160,7 +165,7 @@ figure.lfig { margin: 0; display: grid; gap: 6px; }
   const lessonStats = (d, l) => { const qs = d.questions.filter(q => q.lesson === l.id); return { n: qs.length, right: qs.filter(q => (qRec(q.id) || {}).last === 1).length }; };
 
   function renderHome() {
-    const last = prefs.get('lane'), g = game();
+    const last = prefs.get('lane');
     app.innerHTML = '<header class="mast"><div class="wrap"><div class="brand">Throughput</div><p class="sub">Operations: quality and process improvement, supply chain, and the COO chair.</p>' +
       '<div class="pills"><span class="pill">study-kit <b>' + esc(BANK.kitVersion) + '</b></span><span class="pill" id="prefs-saved">' + esc(prefs.statusText()) + '</span></div></div></header>' +
       '<main class="wrap">' +
@@ -168,23 +173,23 @@ figure.lfig { margin: 0; display: grid; gap: 6px; }
       LANES.map(l => '<button class="lanebtn" style="--deck:var(' + l.color + ')" data-act="lane" data-id="' + l.id + '"' + (l.active ? '' : ' disabled aria-disabled="true"') + '>' +
         '<span class="nm">' + esc(l.name) + '</span><span class="bl">' + esc(l.blurb) + '</span>' +
         '<span class="st">' + (l.active ? (last && last.v === l.id ? 'Open · last visited' : 'Open') : 'Later') + '</span></button>').join('') +
-      '</div></section>' +
-      '<section aria-labelledby="sm-h"><div class="section-h"><h2 id="sm-h">Simulations</h2><span class="hint">Joins the Supply chain lane when it opens</span></div><div class="items">' +
-      itemRow('#beer-game', BEER.title, (g ? 'In progress · ' + BG.SEATS[g.seat] : 'Supply chain · bullwhip · 32 weekly orders'), BEER.status) + '</div></section>' + foot() + '</main>';
+      '</div></section>' + foot() + '</main>';
   }
   function renderLane() {
     const l = laneById(VIEW.id);
     if (!l || !l.active) return host.go('home', {});
     const secs = SECTIONS[l.id] || [];
-    app.innerHTML = host.header(l.short + ' lane', 'home', '', 'Back to lanes', l.cert ? 'Green Belt' : '') +
+    const g = game(), SIM = { '#beer-game': [BEER, () => g ? 'In progress · ' + BG.SEATS[g.seat] : 'Bullwhip · 32 weekly orders'], '#inventory-sim': [INV, invMeta] };
+    app.innerHTML = host.header(l.short + ' lane', 'home', '', 'Back to lanes', l.id === 'quality' ? 'Green Belt' : l.id === 'supply-chain' ? 'CSCP' : '') +
       '<main class="wrap"><section class="card" style="display:grid;gap:10px"><h2 class="ttl" style="font-size:19px">' + esc(l.name) + '</h2><p class="note">' + esc(l.blurb) + '</p>' +
       (BANK.exam[l.id] ? '<p class="note"><b>The exam:</b> ' + esc(BANK.exam[l.id]) + '</p>' : '') + '</section>' +
       '<section aria-labelledby="sc-h"><div class="section-h"><h2 id="sc-h">Sections</h2><span class="hint">Weighted as the exam is</span></div><div class="card" style="padding-block:4px">' +
-      secs.map(s => { const d = deckById(s.id), st = d && deckStats(d);
-        return '<div class="secrow" id="' + esc(l.id + '-' + s.id) + '"><div class="top"><b>' + esc(s.title) + '</b>' + (d || (s.id === 'mock' && MOCK) ? '<span class="k">' + esc(s.kind) + '</span>' : '<span class="soon">Phase ' + s.phase + '</span>') + '</div>' +
-          (d ? '<div class="items">' + itemRow('#deck-' + d.id, d.title + ' deck', s.questions + ' of 100 scored questions · ' + d.lessons.length + ' lessons · ' + st.right + ' of ' + st.n + ' right', 'Draft') + '</div>'
+      secs.map(s => { const d = deckById(s.id), st = d && deckStats(d), sim = s.kind === 'Simulation' && SIM[s.route], share = s.weight ? s.weight + '% of the exam' : s.questions ? s.questions + ' of 100 scored questions' : '';
+        return '<div class="secrow" id="' + esc(l.id + '-' + s.id) + '"><div class="top"><b>' + esc(s.title) + '</b>' + (d || sim || (s.id === 'mock' && MOCK) ? '<span class="k">' + esc(s.kind) + '</span>' : '<span class="soon">Phase ' + s.phase + '</span>') + '</div>' +
+          (d ? '<div class="items">' + itemRow('#deck-' + d.id, d.title + ' deck', share + ' · ' + d.lessons.length + ' lessons · ' + st.right + ' of ' + st.n + ' right', 'Draft') + '</div>'
+            : sim ? '<div class="items">' + itemRow(s.route, sim[0].title, sim[1](), sim[0].status) + '</div>'
             : s.id === 'mock' && MOCK ? '<div class="items">' + itemRow('#mock', MOCK.title, mockMeta(), MOCK.status) + '</div>'
-            : '<span class="k">' + esc(s.kind) + (s.questions ? ' · ' + s.questions + ' of 100 scored questions' : '') + ' · not built yet</span>') + '</div>'; }).join('') +
+            : '<span class="k">' + esc(s.kind) + (share ? ' · ' + share : '') + ' · not built yet</span>') + '</div>'; }).join('') +
       '</div></section>' + foot() + '</main>';
   }
 
@@ -278,7 +283,7 @@ figure.lfig { margin: 0; display: grid; gap: 6px; }
     }
     if (VIEW.debrief && beer.get('last')) return renderDebrief(beer.get('last'));
     const pick = VIEW.seat !== undefined ? VIEW.seat : 1;
-    app.innerHTML = host.header(BEER.title, 'home', '', 'Back to start', 'Draft') + '<main class="wrap" style="display:grid;gap:12px"><section class="card prose" style="display:grid;gap:10px"><div class="row">' + draftChip(BEER) + '<span class="lvchip">Supply chain · bullwhip</span></div>' +
+    app.innerHTML = host.header(BEER.title, 'lane', 'supply-chain', 'Back to the Supply chain lane', 'Draft') + '<main class="wrap" style="display:grid;gap:12px"><section class="card prose" style="display:grid;gap:10px"><div class="row">' + draftChip(BEER) + '<span class="lvchip">Supply chain · bullwhip</span></div>' +
       BEER.briefing.map(p => '<p>' + esc(p) + '</p>').join('') + '</section>' +
       '<section class="card" style="display:grid;gap:10px"><h2 class="ttl" style="font-size:18px">Pick your stage</h2><div class="seats" role="group" aria-label="Stage">' +
       BG.SEATS.map((s, i) => { const res = beer.get('seat-' + i); return '<button class="tog" data-act="beer-seat" data-id="' + i + '" aria-pressed="' + (pick === i) + '">' + esc(s) + (i === 1 ? ' · suggested first' : '') + (res ? ' · best ' + money2(res.best2) : '') + '</button>'; }).join('') + '</div>' +
@@ -291,7 +296,7 @@ figure.lfig { margin: 0; display: grid; gap: 6px; }
     const val = VIEW.qty !== undefined ? VIEW.qty : lastOrder;
     const from = Math.max(0, k - 5), rows = [];
     for (let t = k; t >= from; t--) rows.push('<tr><td>' + (t + 1) + '</td><td>' + h.incoming[s][t] + '</td><td>' + h.recv[s][t] + '</td><td>' + h.inv[s][t] + '</td><td>' + h.back[s][t] + '</td><td>' + (t < k ? h.order[s][t] : '—') + '</td></tr>');
-    app.innerHTML = host.header(BEER.title + ' · ' + BG.SEATS[s], 'home', '', 'Back to start', 'Week ' + w) + '<main class="wrap" style="display:grid;gap:12px">' +
+    app.innerHTML = host.header(BEER.title + ' · ' + BG.SEATS[s], 'lane', 'supply-chain', 'Back to the Supply chain lane', 'Week ' + w) + '<main class="wrap" style="display:grid;gap:12px">' +
       '<section class="card" style="display:grid;gap:10px" aria-live="polite"><div class="stat" id="beer-status">' +
       [['On hand', h.inv[s][k]], ['Backlog', h.back[s][k]], [s === 0 ? 'Customer demand this week' : 'Order received this week', h.incoming[s][k]], ['Delivered to you this week', h.recv[s][k]], ['On order, not yet received', h.onorder[s][k]], ['Cost this week', money2(h.cost2[s][k])], ['Your cost so far', money2(spent)]]
         .map(x => '<div><span class="v">' + esc(x[1]) + '</span><span class="l">' + esc(x[0]) + '</span></div>').join('') + '</div></section>' +
@@ -311,7 +316,7 @@ figure.lfig { margin: 0; display: grid; gap: 6px; }
   function renderDebrief(last) {
     const s = last.seat, r = BG.game(s, last.orders), st = BG.stats(r);
     const benchMine = BG.stats(BG.benchInSeat(s)).stages[s].cost2;
-    app.innerHTML = host.header('Debrief · ' + BG.SEATS[s], 'home', '', 'Back to start', '36 weeks') + '<main class="wrap" style="display:grid;gap:12px">' +
+    app.innerHTML = host.header('Debrief · ' + BG.SEATS[s], 'lane', 'supply-chain', 'Back to the Supply chain lane', '36 weeks') + '<main class="wrap" style="display:grid;gap:12px">' +
       '<section class="card" style="display:grid;gap:10px"><div class="row">' + draftChip(BEER) + '<span class="k">The game ended after week 36</span></div><div class="stat" id="beer-score">' +
       [['Your stage cost', money2(st.stages[s].cost2)], ['Team cost', money2(st.team2)], ['Benchmark team: all four on the benchmark rule', money2(BEER.refTeam2.bench)], ['Team if all four play like Sterman\'s average player', money2(BEER.refTeam2.average)],
         ['Benchmark rule in your seat, same other players: team', money2(BEER.benchTeam2[s])], ['… and your stage', money2(benchMine)]]
@@ -438,13 +443,95 @@ figure.lfig { margin: 0; display: grid; gap: 6px; }
       '<div class="row"><button class="btn btn-primary" data-act="mock-start">Start a new mock</button><a class="btn" href="#lane-quality">Back to the lane</a></div><p class="note" id="mock-saved">' + esc(mock.statusText()) + '</p>' + foot() + '</main>';
   }
 
+  // ---- Inventory sim (app-side engine, math/inventory.js; Phase 3, approved Nov 24)
+  const cents = c => '$' + (c / 100).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+  const pct1 = f => (100 * f).toFixed(1) + '%';
+  const invGame = () => { const v = inv.get('game'); return v && !v.done && Array.isArray(v.dec) ? JSON.parse(JSON.stringify(v)) : undefined; };
+  const invMeta = () => { const g = invGame(), b = inv.get('best'); return g ? 'In progress · review ' + g.dec.length + ' of 3' : '26 weeks · 3 reviews' + (b ? ' · best ' + cents(b.total) : ''); };
+  function invInputs(dec, L) {
+    const D = INV.data.rules;
+    return '<div class="invin"><label class="eyebrow" for="inv-q">Order quantity (Q)</label><input id="inv-q" type="number" inputmode="numeric" min="0" max="2000" step="1" value="' + esc(dec ? dec.q : '') + '">' +
+      '<label class="eyebrow" for="inv-rop">Reorder point (ROP)</label><input id="inv-rop" type="number" inputmode="numeric" min="0" max="3000" step="1" value="' + esc(dec ? dec.rop : '') + '"></div>' +
+      '<p class="note" id="inv-hint">Expected demand over a ' + L + '-week lead time at ' + D.mean + ' a week is ' + (D.mean * L) + ' units; anything in the ROP above that is safety stock.</p>';
+  }
+  function invRead() {
+    const v = id => { const el = document.getElementById(id), raw = el ? String(el.value).trim() : '', n = Number(raw); return raw !== '' && Number.isInteger(n) ? n : null; };
+    const q = v('inv-q'), rop = v('inv-rop');
+    if (q === null || q < 0 || q > 2000) { host.toast('Order quantity: a whole number from 0 to 2,000.'); return null; }
+    if (rop === null || rop < 0 || rop > 3000) { host.toast('Reorder point: a whole number from 0 to 3,000.'); return null; }
+    return { q, rop };
+  }
+  function renderInv() {
+    const g = invGame();
+    if (g) {
+      const r = IE.play(INV.data, g.dec);
+      if (r.waiting < 0) { invFinish(g); return renderInv(); }
+      return renderInvReview(g, r);
+    }
+    if (VIEW.debrief && inv.get('last')) return renderInvDebrief(inv.get('last'));
+    const last = inv.get('last');
+    app.innerHTML = host.header(INV.title, 'lane', 'supply-chain', 'Back to the Supply chain lane', 'Draft') + '<main class="wrap" style="display:grid;gap:12px"><section class="card prose" style="display:grid;gap:10px"><div class="row">' + draftChip(INV) + '<span class="lvchip">Supply chain · inventory</span></div>' +
+      INV.briefing.map(p => '<p>' + esc(p) + '</p>').join('') + '</section>' +
+      '<section class="card" style="display:grid;gap:10px"><h2 class="ttl" style="font-size:18px">Your opening policy</h2>' + invInputs(VIEW.dec, INV.data.rules.leadBefore) +
+      '<div class="row"><button class="btn btn-primary" data-act="inv-start">Start week 1</button>' + (last ? '<button class="btn" data-act="inv-debrief">Last game\'s debrief</button>' : '') + '</div>' +
+      '<p class="note" id="inv-saved">' + esc(inv.statusText()) + '</p></section>' + foot() + '</main>';
+  }
+  function renderInvReview(g, r) {
+    const R = INV.data.rules, p = r.waiting, h = r.h, k = r.week, st = IE.stats(r, INV.data), cur = g.dec[p - 1], L = IE.lead(R, k + 2);
+    const rows = []; for (let t = k; t >= Math.max(1, k - 5); t--) rows.push('<tr><td>' + t + '</td><td>' + INV.data.demand[t - 1] + '</td><td>' + h.sold[t - 1] + '</td><td>' + h.lost[t - 1] + '</td><td>' + h.arrive[t - 1] + '</td><td>' + h.onHand[t - 1] + '</td><td>' + (h.ordered[t - 1] || '—') + '</td></tr>');
+    app.innerHTML = host.header(INV.title, 'lane', 'supply-chain', 'Back to the Supply chain lane', 'Review ' + p + ' of 3') + '<main class="wrap" style="display:grid;gap:12px">' +
+      '<section class="card" style="display:grid;gap:10px" aria-live="polite"><h2 class="ttl" style="font-size:18px">After week ' + k + '</h2><div class="stat" id="inv-status">' +
+      [['On hand', h.onHand[k - 1]], ['Inventory position', h.ip[k - 1]], ['Cost so far', cents(st.total)], ['Fill rate so far', pct1(st.fill)], ['Units lost so far', st.lostUnits], ['Orders placed', st.orders]]
+        .map(x => '<div><span class="v">' + esc(x[1]) + '</span><span class="l">' + esc(x[0]) + '</span></div>').join('') + '</div></section>' +
+      '<section class="card prose" style="display:grid;gap:8px"><h2 class="ttl" style="font-size:18px">News</h2><p id="inv-news">' + esc(INV.news[p - 1]) + '</p></section>' +
+      '<section class="card" style="display:grid;gap:10px"><h2 class="ttl" style="font-size:18px">Your policy from week ' + (k + 1) + '</h2>' + invInputs(VIEW.dec || cur, L) +
+      '<div class="row"><button class="btn btn-primary" data-act="inv-next">Continue with these</button><button class="btn" data-act="inv-keep">Keep Q ' + cur.q + ', ROP ' + cur.rop + '</button></div></section>' +
+      '<section aria-labelledby="ih-h"><div class="section-h"><h2 id="ih-h">Recent weeks</h2></div><div class="card scroll" style="padding:4px 8px"><table class="t" id="inv-table"><thead><tr><th>Week</th><th>Demand</th><th>Sold</th><th>Lost</th><th>Arrived</th><th>On hand</th><th>Ordered</th></tr></thead><tbody>' + rows.join('') + '</tbody></table></div></section>' +
+      '<div class="row"><button class="btn btn-quiet" data-act="inv-quit">Abandon this game</button></div><p class="note" id="inv-saved">' + esc(inv.statusText()) + '</p>' + foot() + '</main>';
+  }
+  function invFinish(g) {
+    const r = IE.play(INV.data, g.dec), st = IE.stats(r, INV.data), b = inv.get('best');
+    inv.put('last', { ts: Date.now(), dec: g.dec.slice() });
+    if (!b || st.total < b.total) inv.put('best', { ts: Date.now(), total: st.total });
+    inv.put('game', { ts: Date.now(), done: true });
+    VIEW = { debrief: true };
+  }
+  function invChart(r, dec) {
+    const R = INV.data.rules, W = 360, H = 200, L = 34, Rt = 8, T = 10, B = 24, n = R.weeks, oh = r.h.onHand, lost = r.h.lost;
+    const rop = []; for (let t = 1; t <= n; t++) rop.push(dec[IE.phaseOf(R, t)].rop);
+    const top = Math.ceil(Math.max(100, ...oh, ...rop, ...lost) / 100) * 100;
+    const x = t => L + (W - L - Rt) * t / (n - 1), y = v => T + (H - T - B) * (1 - v / top), bw = (W - L - Rt) / n * 0.6;
+    const grid = [0, top / 2, top].map(v => '<line x1="' + L + '" x2="' + (W - Rt) + '" y1="' + y(v) + '" y2="' + y(v) + '" stroke="var(--rule)"/><text x="' + (L - 4) + '" y="' + (y(v) + 4) + '" text-anchor="end" font-size="10" fill="var(--muted)">' + v + '</text>').join('');
+    const ticks = [1, 9, 14, 19, 26].map(t => '<text x="' + x(t - 1) + '" y="' + (H - 6) + '" text-anchor="' + (t === 1 ? 'start' : t === n ? 'end' : 'middle') + '" font-size="10" fill="var(--muted)">wk ' + t + '</text>').join('');
+    const bars = lost.map((v, t) => v ? '<rect x="' + (x(t) - bw / 2).toFixed(1) + '" y="' + y(v).toFixed(1) + '" width="' + bw.toFixed(1) + '" height="' + (y(0) - y(v)).toFixed(1) + '" fill="var(--bad)" opacity=".75"/>' : '').join('');
+    const line = (v, col, w, dash) => '<polyline fill="none" stroke="' + col + '" stroke-width="' + w + '"' + (dash ? ' stroke-dasharray="' + dash + '"' : '') + ' stroke-linejoin="round" points="' + v.map((u, t) => x(t).toFixed(1) + ',' + y(u).toFixed(1)).join(' ') + '"/>';
+    return '<svg class="fig" viewBox="0 0 ' + W + ' ' + H + '" role="img" aria-label="On hand at the end of each week, your reorder point, and lost sales; the table below gives the figures">' + grid + ticks + bars + line(rop, 'var(--muted)', 1.5, '4 3') + line(oh, 'var(--c1)', 2.5) + '</svg>' +
+      '<div class="legend"><span><i style="background:var(--c1)"></i>On hand (end of week)</span><span><i style="background:var(--muted)"></i>Your reorder point</span><span><i style="background:var(--bad)"></i>Lost sales</span></div>';
+  }
+  function renderInvDebrief(last) {
+    const r = IE.play(INV.data, last.dec), st = IE.stats(r, INV.data), ref = INV.ref, hs = INV.hindsight, best = inv.get('best');
+    const row = (name, s) => '<tr><td>' + name + '</td><td>' + cents(s.total) + '</td><td>' + cents(s.hold) + '</td><td>' + cents(s.order) + '</td><td>' + cents(s.lost) + '</td><td>' + pct1(s.fill) + '</td></tr>';
+    app.innerHTML = host.header('Debrief · inventory', 'lane', 'supply-chain', 'Back to the Supply chain lane', '26 weeks') + '<main class="wrap" style="display:grid;gap:12px">' +
+      '<section class="card" style="display:grid;gap:10px"><div class="row">' + draftChip(INV) + '<span class="k">26 weeks played</span></div><div class="stat" id="inv-score">' +
+      [['Your total cost', cents(st.total)], ['Fill rate', pct1(st.fill)], ['Units lost', st.lostUnits], ['Orders placed', st.orders], ['Your best so far', best ? cents(best.total) : '—']]
+        .map(x => '<div><span class="v">' + esc(x[1]) + '</span><span class="l">' + esc(x[0]) + '</span></div>').join('') + '</div>' +
+      '<p class="note">Your settings by phase: ' + last.dec.map((d, i) => 'weeks ' + [1, 7, 13, 19][i] + '–' + [6, 12, 18, 26][i] + ' Q ' + d.q + ', ROP ' + d.rop).join('; ') + '.</p></section>' +
+      '<section class="card scroll" style="padding:4px 8px"><table class="t" id="inv-compare"><thead><tr><th>Policy</th><th>Total</th><th>Holding</th><th>Ordering</th><th>Lost sales</th><th>Fill rate</th></tr></thead><tbody>' +
+      row('You', st) + row('Textbook, updated at each review', ref.textbook) + row('Opening textbook policy, never changed', ref.unchanged) +
+      '<tr><td>Best single Q ' + hs.q + ', ROP ' + hs.rop + ' (hindsight)</td><td>' + cents(hs.total) + '</td><td colspan="4"></td></tr></tbody></table></section>' +
+      '<section class="card" style="display:grid;gap:10px"><h2 class="ttl" style="font-size:18px">Stock by week</h2>' + invChart(r, last.dec) + '</section>' +
+      '<article class="card prose" style="display:grid;gap:10px"><h2 class="ttl" style="font-size:18px">What the numbers say</h2>' + INV.lesson.map(p => '<p>' + esc(p) + '</p>').join('') +
+      '<h3 class="k">Sources</h3><ul class="src">' + INV.sources.map(x => '<li><a href="' + esc(x[1]) + '" target="_blank" rel="noopener">' + esc(x[0]) + '</a> <span class="lvchip">' + esc(x[2]) + '</span></li>').join('') + '</ul></article>' +
+      '<div class="row"><button class="btn btn-primary" data-act="inv-again">Play again</button><a class="btn" href="#lane-supply-chain">Back to the lane</a></div>' + foot() + '</main>';
+  }
+
   function foot() {
     const t = theme();
     return '<footer class="foot"><div class="row"><span>Theme:</span>' + ['system', 'light', 'dark'].map(x => '<button class="tog" data-act="theme" data-id="' + x + '" aria-pressed="' + (t === x) + '">' + x[0].toUpperCase() + x.slice(1) + '</button>').join('') + '</div>' +
       '<p>Engines: study-kit ' + esc(BANK.kitVersion) + '. Draft content has not been reviewed yet. Claude grading and role-plays work when this page is open in Claude; everything else works without it.</p></footer>';
   }
 
-  const SCREENS = Object.assign({ home: renderHome, lane: renderLane, deck: renderDeck, lesson: renderLesson, practice: renderPractice, cards: renderCards, beer: renderBeer, mock: renderMock }, craft.screens, sims.screens);
+  const SCREENS = Object.assign({ home: renderHome, lane: renderLane, deck: renderDeck, lesson: renderLesson, practice: renderPractice, cards: renderCards, beer: renderBeer, inv: renderInv, mock: renderMock }, craft.screens, sims.screens);
   const ACT = Object.assign({
     home() { history.replaceState(null, '', location.pathname + location.search); host.go('home', {}); },
     lane(t) { const l = laneById(t.dataset.id); if (!l || !l.active) return; prefs.put('lane', { ts: Date.now(), v: l.id }); history.replaceState(null, '', '#lane-' + l.id); host.go('lane', { id: l.id }); },
@@ -483,6 +570,12 @@ figure.lfig { margin: 0; display: grid; gap: 6px; }
       if (left) host.confirm('Submit the mock?', left + ' question' + (left === 1 ? ' is' : 's are') + ' unanswered and will be marked wrong.', 'Submit', () => finishMock(r)); else finishMock(r); },
     'mock-quit'() { host.confirm('Abandon this mock?', 'Your answers so far are discarded and nothing is scored.', 'Abandon', () => { mock.put('run', { ts: Date.now(), done: true }); host.go('mock', {}); }); },
     'mock-last'() { host.go('mock', { results: true }); },
+    'inv-start'() { const d = invRead(); if (!d) return; inv.put('game', { ts: Date.now(), dec: [d] }); VIEW = {}; host.go('inv', {}); },
+    'inv-next'() { const g = invGame(), d = invRead(); if (!g || !d) return; g.dec.push(d); g.ts = Date.now(); inv.put('game', g); host.go('inv', {}); },
+    'inv-keep'() { const g = invGame(); if (!g) return; g.dec.push(Object.assign({}, g.dec[g.dec.length - 1])); g.ts = Date.now(); inv.put('game', g); host.go('inv', {}); },
+    'inv-debrief'() { host.go('inv', { debrief: true }); },
+    'inv-again'() { host.go('inv', {}); },
+    'inv-quit'() { host.confirm('Abandon this game?', 'Your settings so far are discarded.', 'Abandon', () => { inv.put('game', { ts: Date.now(), done: true }); host.go('inv', {}); }); },
     'beer-quit'() { host.confirm('Abandon this game?', 'Your orders so far are discarded.', 'Abandon', () => { beer.put('game', { ts: Date.now(), done: true }); host.go('beer', {}); }); }
   }, craft.actions, sims.actions);
   function render() { (SCREENS[SCREEN] || renderHome)(); }
@@ -496,6 +589,7 @@ figure.lfig { margin: 0; display: grid; gap: 6px; }
     if ((m = /^#practice-([a-z0-9-]+)$/.exec(h || '')) && deckById(m[1])) { const d = deckById(m[1]); host.go('practice', { deck: d.id, ids: practiceSet(d), i: 0, picks: {} }); return true; }
     if ((m = /^#lesson-([a-z]+-\d+)$/.exec(h || '')) && LESSONS[m[1]]) { host.go('lesson', { id: m[1] }); return true; }
     if (h === '#beer-game') { host.go('beer', {}); return true; }
+    if (h === '#inventory-sim') { host.go('inv', {}); return true; }
     if (h === '#mock' && MOCK) { host.go('mock', {}); return true; }
     return craft.route(h) || sims.route(h);
   }
@@ -516,10 +610,10 @@ figure.lfig { margin: 0; display: grid; gap: 6px; }
     try { const fn = await C.use('sample'); if (typeof fn === 'function') { SAMPLE = fn; if (['craft', 'packet', 'stage', 'sims', 'run', 'rp'].indexOf(SCREEN) !== -1) host.keepScroll(); } } catch (e) { /* not granted */ }
     try {
       const db = await C.use('db'), user = await C.use('user'), uid = user && await user.id();
-      if (db && uid) { prefs.attach(db, uid); decks.attach(db, uid); beer.attach(db, uid); mock.attach(db, uid); craft.attach(db, uid); sims.attach(db, uid); if (SCREEN === 'home') host.keepScroll(); }
+      if (db && uid) { prefs.attach(db, uid); decks.attach(db, uid); beer.attach(db, uid); mock.attach(db, uid); inv.attach(db, uid); craft.attach(db, uid); sims.attach(db, uid); if (SCREEN === 'home') host.keepScroll(); }
     } catch (e) { /* saved on this device only */ }
   })();
-  window.__tp = { craft, sims, prefs, decks, beer, mock, host, drawMock };
+  window.__tp = { craft, sims, prefs, decks, beer, mock, inv, host, drawMock };
 })();
 </script>
 </body>

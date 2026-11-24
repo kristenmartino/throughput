@@ -64,5 +64,10 @@ module.exports = {
   kaizen: ['Purdue Lean Six Sigma Online: Kaizen events (kaizen blitz)', 'https://www.purdue.edu/leansixsigmaonline/blog/kaizen-training-lean-six-sigma-approach', 'Relayed (search text)'],
   asqscore: ['ASQ: Exam results FAQ (550 of a possible 750)', 'https://www.asq.org/cert/faq/faq-exam-results', 'Read'],
   asqgrade: ['ASQ: Exam grading process (Modified Angoff, scaled scores)', 'https://www.asq.org/cert/faq/exam-grading-process', 'Read'],
-  asqexam: ['ASQ: Six Sigma Green Belt certification (exam format)', 'https://asq.org/cert/six-sigma-green-belt', 'Read']
+  asqexam: ['ASQ: Six Sigma Green Belt certification (exam format)', 'https://asq.org/cert/six-sigma-green-belt', 'Read'],
+  // Phase 3: supply chain (opened Nov 24, 2026 unless marked)
+  cscpecm: ['ASCM: CSCP Exam Content Manual v5.0, preview (main topics and weights)', 'https://www.ascm.org/globalassets/documents--files/learning--development/cscp-v5.0-ecm-preview-.pdf', 'Read'],
+  cscpoutline: ['ASCM: 2026 CSCP module content outline', 'https://www.ascm.org/globalassets/ascm_website_assets/docs/credentials/2026-cscp-module-content-outline.pdf', 'Read'],
+  mitEoq: ['MIT OCW 15.772J D-Lab: Supply Chains (Fall 2014), lecture 13: inventory and EOQ', 'https://ocw.mit.edu/courses/15-772j-d-lab-supply-chains-fall-2014/b0b41cc09a83ffa4cf1335ac65f5f9ab_MIT15_772JF14_Lec13.pdf', 'Read'],
+  willems: ['Willems (2001), Inventory Basics (from S. C. Graves\'s notes), MIT 15.762J materials', 'https://dspace.mit.edu/bitstream/handle/1721.1/71720/15-762j-spring-2005/contents/lecture-notes/inventory_notes.pdf', 'Read']
 };

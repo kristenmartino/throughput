@@ -23,7 +23,10 @@ for (const ln of L.lanes) {
   if (/\b(CDO|CRO|CPO|CCO)\b/.test(ln.name)) errors.push('lane ' + ln.id + ': colliding bare acronym in the name');
 }
 if (laneIds.join() !== 'quality,supply-chain,coo') errors.push('lanes are quality, supply-chain, coo in that order');
-if (L.lanes.filter(l => l.active).map(l => l.id).join() !== 'quality') errors.push('Phase 1: only the quality lane is active');
+if (L.lanes.filter(l => l.active).map(l => l.id).join() !== 'quality,supply-chain') errors.push('Phase 3: the quality and supply-chain lanes are active');
+{ const w = (L.sections['supply-chain'] || []).filter(s => s.kind === 'Deck').map(s => s.weight);   // ASCM CSCP ECM v5.0 weights (Read, Nov 24)
+  if (w.join() !== '10,10,17,19,9,17,10,8') errors.push('supply-chain decks must carry the ASCM weights 10,10,17,19,9,17,10,8 (got ' + w.join() + ')'); }
+for (const s of L.sections['supply-chain'] || []) if (s.kind === 'Simulation' && !/^#[a-z0-9-]+$/.test(s.route || '')) errors.push('section supply-chain-' + s.id + ': a simulation needs a route');
 for (const lane in L.sections) {
   if (laneIds.indexOf(lane) === -1) errors.push('sections for unknown lane ' + lane);
   for (const s of L.sections[lane]) {
@@ -156,6 +159,29 @@ const BEER = require('./content/beer.js');
 for (const p of BEER.lesson) if (!/\((Read|Relayed|Inferred|Measured)/.test(p)) errors.push('beer lesson: every paragraph needs a tier tag');
 claim(BEER.id, 'game');
 
+// ---- Inventory sim (Phase 3): rules and demand in data/inventory.json; engine math/inventory.js, checked against
+// math/inventory.py above. {key} placeholders in its text come from the checked engine.
+const INVD = require('./data/inventory.json'), IE = require('./math/inventory.js'), INVC = require('./content/inventory.js');
+claim(INVC.id, 'game');
+const inventory = (() => {
+  const R = INVD.rules, tb = mc.inventory.textbook, hs = mc.inventory.hindsight, nc = [tb[0], tb[0], tb[0], tb[0]];
+  const S1 = IE.stats(IE.play(INVD, tb), INVD), S0 = IE.stats(IE.play(INVD, nc), INVD);
+  const money = c => '$' + (c / 100).toLocaleString('en-US', { minimumFractionDigits: c % 100 ? 2 : 0, maximumFractionDigits: 2 });
+  const pct = f => (100 * f).toFixed(1) + '%';
+  const V = { mean: R.mean, sd: R.sd, leadBefore: R.leadBefore, leadAfter: R.leadAfter, initOnHand: R.initOnHand, z: R.z,
+    hold: (R.holdCents / 100).toFixed(2), order: R.orderCents / 100, lost: R.lostCents / 100, holdD: (R.holdCents / 100).toFixed(2), orderD: R.orderCents / 100,
+    r1: R.reviews[0], r2: R.reviews[1], r3: R.reviews[2], eoq: tb[0].q, rop0: tb[0].rop, rop1: tb[1].rop, rop2: tb[2].rop,
+    tbTotal: money(S1.total), tbFill: pct(S1.fill), ncTotal: money(S0.total), ncFill: pct(S0.fill),
+    ncHoldSave: money(S1.hold - S0.hold), ncLostCost: money(S0.lost), ncLostUnits: S0.lostUnits, hsQ: hs.q, hsRop: hs.rop, hsTotal: money(hs.total) };
+  const f = (t, w) => t.replace(/\{([A-Za-z0-9]+)\}/g, (m, k) => { if (!(k in V)) { errors.push('inventory ' + w + ': unknown {' + k + '}'); return m; } return String(V[k]); });
+  INVC.lesson.forEach((p, i) => { if (!/\((Read|Relayed|Inferred|Measured|Computed)/.test(p)) errors.push('inventory lesson ' + (i + 1) + ': needs a tier tag'); });
+  if (S0.total <= S1.total) errors.push('inventory: the textbook policy should beat the unchanged one on this demand');
+  if (INVC.news.length !== R.reviews.length) errors.push('inventory: one news item per review');
+  return { id: INVC.id, title: INVC.title, status: INVC.status, blurb: f(INVC.blurb, 'blurb'), briefing: INVC.briefing.map((p, i) => f(p, 'briefing ' + i)),
+    news: INVC.news.map((p, i) => f(p, 'news ' + i)), lesson: INVC.lesson.map((p, i) => f(p, 'lesson ' + i)), sources: INVC.sources.map(k => SRC[k]),
+    data: INVD, textbook: tb, hindsight: hs, ref: { textbook: S1, unchanged: S0 } };
+})();
+
 // Engines: no Craft or Simulations content yet. Craft packets will use ids TP-n, runs TPN-n, role-plays TPL-n.
 const craft = loadCraft([], { dir: path.join(here, 'build', 'craft'), idPrefix: 'TP', takenIds: new Set() });
 errors.push(...craft.errors);
@@ -167,7 +193,7 @@ const PUB = path.join(here, 'published-ids.json');
 const pub = JSON.parse(fs.readFileSync(PUB, 'utf8'));
 const now = { lanes: laneIds, sections: sectionIds, craft: craft.ids, sims: sims.ids,
   lessons: [].concat(...DECKS.map(d => d.lessons.map(l => l.id))), questions: [].concat(...DECKS.map(d => d.questions.map(q => q.id))),
-  cards: [].concat(...DECKS.map(d => d.cards.map(c => c.id))), decks: DECKS.map(d => d.id), games: [BEER.id], mocks: [MOCK.id], mockQuestions: [].concat(...Object.values(MOCK.pool).map(l => l.map(q => q.id))) };
+  cards: [].concat(...DECKS.map(d => d.cards.map(c => c.id))), decks: DECKS.map(d => d.id), games: [BEER.id, INVC.id], mocks: [MOCK.id], mockQuestions: [].concat(...Object.values(MOCK.pool).map(l => l.map(q => q.id))) };
 for (const k of Object.keys(pub)) if (k !== 'note' && !(k in now)) errors.push('published-ids.json has an unknown kind ' + k);
 for (const k of Object.keys(now)) for (const id of (pub[k] || [])) if (now[k].indexOf(id) === -1) errors.push('published ' + k + ' id ' + id + ' is missing; links depend on it');
 if (errors.length) { console.error(errors.join('\n')); process.exit(1); }
@@ -184,14 +210,14 @@ const ref = { average: mc.beer.all_average, benchSeat: mc.beer.bench_in_seat }; 
 const BG = require('./math/beer.js');
 const beer = { id: BEER.id, title: BEER.title, status: BEER.status, blurb: BEER.blurb, briefing: BEER.briefing, lesson: BEER.lesson, sources: BEER.sources.map(k => SRC[k]),
   refTeam2: { average: BG.stats(ref.average).team2, bench: BG.stats(mc.beer.all_bench).team2 }, benchAll2: BG.stats(mc.beer.all_bench).stages.map(s => s.cost2), benchTeam2: ref.benchSeat.map(g => BG.stats(g).team2) };
-const bank = { lanes: L.lanes, sections: L.sections, exam: L.exam, craft: craft.packets, runs: sims.runs, roleplays: sims.roleplays, kitVersion, decks: DECKS, beer, mock: MOCK };
+const bank = { lanes: L.lanes, sections: L.sections, exam: L.exam, craft: craft.packets, runs: sims.runs, roleplays: sims.roleplays, kitVersion, decks: DECKS, beer, inventory, mock: MOCK };
 const LS = String.fromCharCode(0x2028), PS = String.fromCharCode(0x2029);
 const json = JSON.stringify(bank).replace(/<\//g, '<\\/').split(LS).join('\\u2028').split(PS).join('\\u2029');
 const tpl = read('index.src.html');
-for (const t of ['__BANK__', '__STUDY_KIT__', '__SHELL_CSS__', '__KIT_CSS__', '__BEER_ENGINE__']) if (tpl.split(t).length !== 2) { console.error('template must contain one ' + t); process.exit(1); }
+for (const t of ['__BANK__', '__STUDY_KIT__', '__SHELL_CSS__', '__KIT_CSS__', '__BEER_ENGINE__', '__INV_ENGINE__']) if (tpl.split(t).length !== 2) { console.error('template must contain one ' + t); process.exit(1); }
 const kit = read('vendor/study-kit/study-kit.js').replace(/<\//g, '<\\/');
 const out = tpl.replace('__SHELL_CSS__', () => read('vendor/study-kit/shell.css')).replace('__KIT_CSS__', () => read('vendor/study-kit/study-kit.css'))
-  .replace('__STUDY_KIT__', () => kit).replace('__BEER_ENGINE__', () => read('math/beer.js').replace(/<\//g, '<\\/')).replace('__BANK__', () => json);
+  .replace('__STUDY_KIT__', () => kit).replace('__BEER_ENGINE__', () => read('math/beer.js').replace(/<\//g, '<\\/')).replace('__INV_ENGINE__', () => read('math/inventory.js').replace(/<\//g, '<\\/')).replace('__BANK__', () => json);
 fs.mkdirSync(path.join(here, 'build'), { recursive: true });
 fs.writeFileSync(path.join(here, 'build', 'index.html'), out);
 fs.writeFileSync(path.join(here, 'build', 'bank.json'), JSON.stringify(bank));   // for the blind-check export; not published
