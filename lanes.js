@@ -23,7 +23,7 @@ module.exports = {
       { id: 'analyze', title: 'IV. Analyze', kind: 'Deck', questions: 18, phase: 2 },
       { id: 'improve', title: 'V. Improve', kind: 'Deck', questions: 16, phase: 2 },
       { id: 'control', title: 'VI. Control', kind: 'Deck', questions: 15, phase: 2 },
-      { id: 'mock', title: 'Timed mock (110 questions, 4 h 18 min)', kind: 'Mock exam', phase: 2 }
+      { id: 'mock', title: 'Timed mock (110 questions, 4 h 18 min)', kind: 'Mock exam', mock: 'mock', phase: 2 }
     ],
     // Supply chain (Phase 3, approved Nov 24): the three sims, then one deck per CSCP module with ASCM's weight
     // (Read, CSCP ECM v5.0 preview, opened Nov 24: 10 / 10 / 17 / 19 / 9 / 17 / 10 / 8). Module titles from ASCM's
@@ -39,7 +39,8 @@ module.exports = {
       { id: 'sc5', title: '5. Forward and reverse logistics', kind: 'Deck', weight: 9, phase: 3 },
       { id: 'sc6', title: '6. Supply chain relationships', kind: 'Deck', weight: 17, phase: 3 },
       { id: 'sc7', title: '7. Supply chain risk', kind: 'Deck', weight: 10, phase: 3 },
-      { id: 'sc8', title: '8. Optimization, sustainability and technology', kind: 'Deck', weight: 8, phase: 3 }
+      { id: 'sc8', title: '8. Optimization, sustainability and technology', kind: 'Deck', weight: 8, phase: 3 },
+      { id: 'mock', title: 'Timed mock (150 questions, 3 h 30 min)', kind: 'Mock exam', mock: 'cscp', phase: 3 }
     ]
   },
   // Exam facts shown on the lane screen (Read, asq.org/cert/six-sigma-green-belt, opened Nov 24).

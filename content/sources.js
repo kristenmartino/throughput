@@ -66,6 +66,7 @@ module.exports = {
   asqgrade: ['ASQ: Exam grading process (Modified Angoff, scaled scores)', 'https://www.asq.org/cert/faq/exam-grading-process', 'Read'],
   asqexam: ['ASQ: Six Sigma Green Belt certification (exam format)', 'https://asq.org/cert/six-sigma-green-belt', 'Read'],
   // Phase 3: supply chain (opened Nov 24, 2026 unless marked)
+  cscpexam: ['ASCM: Certification exam details (150 questions, 130 operational and 20 pretest, 3.5 hours; scaled score 200 to 350, pass at 300)', 'https://www.ascm.org/learning-development/certifications-credentials/exam-details', 'Relayed (search text)'],
   cscpecm: ['ASCM: CSCP Exam Content Manual v5.0, preview (main topics and weights)', 'https://www.ascm.org/globalassets/documents--files/learning--development/cscp-v5.0-ecm-preview-.pdf', 'Read'],
   cscpoutline: ['ASCM: 2026 CSCP module content outline', 'https://www.ascm.org/globalassets/ascm_website_assets/docs/credentials/2026-cscp-module-content-outline.pdf', 'Read'],
   mitEoq: ['MIT OCW 15.772J D-Lab: Supply Chains (Fall 2014), lecture 13: inventory and EOQ', 'https://ocw.mit.edu/courses/15-772j-d-lab-supply-chains-fall-2014/b0b41cc09a83ffa4cf1335ac65f5f9ab_MIT15_772JF14_Lec13.pdf', 'Read'],
