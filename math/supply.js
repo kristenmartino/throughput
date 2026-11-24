@@ -113,6 +113,24 @@ function computeSupply() {
     o.ttr = 6; o.tts = 4; o.ttGap = o.ttr - o.tts; o.weekRev = 500000; o.revRisk = o.ttGap * o.weekRev; o.revRiskWrong = o.ttr * o.weekRev;
     S.sc7 = o;
   }
+  // ---- sc6: relationships
+  {
+    const o = {};
+    o.gm = 0.30; o.costOrder = 80; o.costDel = 150;
+    o.pRev = 500000; o.pOrd = 400; o.pDel = 200; o.pRet = 10000;
+    o.qRev = 800000; o.qOrd = 1500; o.qDel = 600; o.qRet = 40000;
+    for (const c of ['p', 'q']) {
+      o[c + 'Gm'] = o[c + 'Rev'] * o.gm; o[c + 'Cts'] = o[c + 'Ord'] * o.costOrder + o[c + 'Del'] * o.costDel + o[c + 'Ret'];
+      o[c + 'Prof'] = o[c + 'Gm'] - o[c + 'Cts']; o[c + 'Margin'] = o[c + 'Prof'] / o[c + 'Rev'];
+    }
+    o.otd = 0.95; o.complete = 0.97; o.undamaged = 0.99; o.docs = 0.98;
+    o.perfect = o.otd * o.complete * o.undamaged * o.docs; o.perfectAvg = (o.otd + o.complete + o.undamaged + o.docs) / 4; o.perfectMin = Math.min(o.otd, o.complete, o.undamaged, o.docs);
+    o.wQual = 0.40; o.wDel = 0.35; o.wCost = 0.25; o.rQual = 92; o.rDel = 85; o.rCost = 90;
+    o.score = o.wQual * o.rQual + o.wDel * o.rDel + o.wCost * o.rCost; o.scoreAvg = (o.rQual + o.rDel + o.rCost) / 3;
+    o.rDel2 = 95; o.score2 = o.wQual * o.rQual + o.wDel * o.rDel2 + o.wCost * o.rCost; o.scoreUp = o.score2 - o.score;
+    o.qLoss = -o.qProf; o.gain = 200000; o.gainShare = 0.5; o.gainEach = o.gain * o.gainShare;
+    S.sc6 = o;
+  }
   return S;
 }
 module.exports = { computeSupply };

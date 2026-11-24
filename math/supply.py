@@ -115,4 +115,16 @@ def compute_supply():
     o.update(dualCost=40000, dualCut=0.75); o['eFireAfter'] = 0.05 * 2000000 * 0.25; o['dualSave'] = o['eFire'] - o['eFireAfter']; o['dualNet'] = o['dualSave'] - 40000
     o.update(ttr=6, tts=4, weekRev=500000); o['ttGap'] = 2; o['revRisk'] = 2 * 500000; o['revRiskWrong'] = 6 * 500000
     out.update({f'sc7.{k}': float(v) for k, v in o.items()})
+    # ---- sc6
+    o = dict(gm=0.30, costOrder=80, costDel=150, pRev=500000, pOrd=400, pDel=200, pRet=10000, qRev=800000, qOrd=1500, qDel=600, qRet=40000)
+    for c in ('p', 'q'):
+        o[c + 'Gm'] = o[c + 'Rev'] * 0.30; o[c + 'Cts'] = o[c + 'Ord'] * 80 + o[c + 'Del'] * 150 + o[c + 'Ret']
+        o[c + 'Prof'] = o[c + 'Gm'] - o[c + 'Cts']; o[c + 'Margin'] = o[c + 'Prof'] / o[c + 'Rev']
+    o.update(otd=0.95, complete=0.97, undamaged=0.99, docs=0.98)
+    o['perfect'] = 0.95 * 0.97 * 0.99 * 0.98; o['perfectAvg'] = (0.95 + 0.97 + 0.99 + 0.98) / 4; o['perfectMin'] = 0.95
+    o.update(wQual=0.40, wDel=0.35, wCost=0.25, rQual=92, rDel=85, rCost=90, rDel2=95)
+    o['score'] = 0.40 * 92 + 0.35 * 85 + 0.25 * 90; o['scoreAvg'] = (92 + 85 + 90) / 3
+    o['score2'] = 0.40 * 92 + 0.35 * 95 + 0.25 * 90; o['scoreUp'] = o['score2'] - o['score']
+    o['qLoss'] = -o['qProf']; o.update(gain=200000, gainShare=0.5); o['gainEach'] = 100000
+    out.update({f'sc6.{k}': float(v) for k, v in o.items()})
     return out
