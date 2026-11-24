@@ -41,7 +41,7 @@ for (const lane in L.sections) {
 
 // ---- Decks (Phase 1: Define and Measure; Phase 2: Overview, Analyze, Improve, Control; outlines approved Nov 24)
 const FL = NUM.flat(NUM.compute()), used = new Map();
-const fill = (s, w) => { try { String(s).replace(/\{\{([a-z0-9.]+)(?:\|([^}]+))?\}\}/gi, (m, k, f) => { used.set(k + '|' + (f || '0'), [k, f || '0']); return ''; }); return NUM.fill(s, FL); } catch (e) { errors.push(w + ': ' + e.message); return s; } };
+const fill = (s, w) => { try { String(s).replace(/\{\{([a-z0-9.]+)(?:\|([^}]+))?\}\}/gi, (m, k, f) => { used.set(k + '|' + (f || '0'), [k, f || '0']); if (!f && typeof FL[k] === 'number' && !Number.isInteger(FL[k])) errors.push(w + ': {{' + k + '}} is ' + FL[k] + ' but has no format, so it prints rounded to a whole number'); return ''; }); return NUM.fill(s, FL); } catch (e) { errors.push(w + ': ' + e.message); return s; } };
 const LEVELS = ['Remember', 'Understand', 'Apply', 'Analyze', 'Evaluate', 'Create'];
 const OUTLINE = { overview: { counts: [3, 3, 3, 2, 2, 3], cards: 16 }, define: { counts: [3, 3, 2, 4, 4, 4, 3, 4, 3], cards: 20 }, measure: { counts: [2, 4, 2, 4, 3, 4, 3, 2, 6], cards: 24 },
   analyze: { counts: [3, 3, 3, 4, 4, 3, 3, 2, 2], cards: 22 }, improve: { counts: [4, 4, 3, 3, 3, 4, 3], cards: 20 }, control: { counts: [4, 2, 5, 4, 3, 3, 2], cards: 22 },
@@ -208,7 +208,7 @@ const inventory = (() => {
     hold: (R.holdCents / 100).toFixed(2), order: R.orderCents / 100, lost: R.lostCents / 100, holdD: (R.holdCents / 100).toFixed(2), orderD: R.orderCents / 100,
     r1: R.reviews[0], r2: R.reviews[1], r3: R.reviews[2], eoq: tb[0].q, rop0: tb[0].rop, rop1: tb[1].rop, rop2: tb[2].rop,
     tbTotal: money(S1.total), tbFill: pct(S1.fill), ncTotal: money(S0.total), ncFill: pct(S0.fill),
-    ncHoldSave: money(S1.hold - S0.hold), ncLostCost: money(S0.lost), ncLostUnits: S0.lostUnits, hsQ: hs.q, hsRop: hs.rop, hsTotal: money(hs.total) };
+    ncHoldSave: money(S1.hold - S0.hold), ncLostCost: money(S0.lost), ncOrdSave: money(S1.order - S0.order), ncNet: money(S1.total - S0.total), ncLostUnits: S0.lostUnits, hsQ: hs.q, hsRop: hs.rop, hsTotal: money(hs.total) };
   const f = (t, w) => t.replace(/\{([A-Za-z0-9]+)\}/g, (m, k) => { if (!(k in V)) { errors.push('inventory ' + w + ': unknown {' + k + '}'); return m; } return String(V[k]); });
   INVC.lesson.forEach((p, i) => { if (!/\((Read|Relayed|Inferred|Measured|Computed)/.test(p)) errors.push('inventory lesson ' + (i + 1) + ': needs a tier tag'); });
   if (S0.total <= S1.total) errors.push('inventory: the textbook policy should beat the unchanged one on this demand');
