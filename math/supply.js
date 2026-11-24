@@ -72,6 +72,18 @@ function computeSupply() {
     o.flow = 300; o.transit = 14; o.pipe = o.flow * o.transit; o.transitAir = 3; o.pipeAir = o.flow * o.transitAir; o.pipeCut = o.pipe - o.pipeAir;
     S.sc5 = o;
   }
+  // ---- sc2: networks and metrics
+  {
+    const o = {}, pts = [[10, 20, 400], [40, 10, 300], [30, 40, 300]], V = sum(pts.map(p => p[2]));
+    pts.forEach((p, i) => { o['x' + (i + 1)] = p[0]; o['y' + (i + 1)] = p[1]; o['v' + (i + 1)] = p[2]; });
+    o.vTot = V; o.cgX = sum(pts.map(p => p[0] * p[2])) / V; o.cgY = sum(pts.map(p => p[1] * p[2])) / V;
+    o.avgX = sum(pts.map(p => p[0])) / 3; o.avgY = sum(pts.map(p => p[1])) / 3;
+    o.price = 40; o.freight = 3; o.ins = 0.40; o.dutyRate = 0.05; o.duty = 0.05 * 40; o.broker = 0.60; o.inland = 1.00;
+    o.landed = o.price + o.freight + o.ins + o.duty + o.broker + o.inland; o.landedNoDuty = o.landed - o.duty; o.cif = o.price + o.freight + o.ins; o.domestic = 45;
+    o.offPrem = o.landed / o.domestic - 1; o.priceGap = 1 - o.price / o.domestic;
+    o.dio = 60; o.dso = 45; o.dpo = 50; o.c2c = o.dio + o.dso - o.dpo; o.c2cWrong = o.dio + o.dso + o.dpo; o.c2cDpo65 = o.dio + o.dso - 65;
+    S.sc2 = o;
+  }
   return S;
 }
 module.exports = { computeSupply };

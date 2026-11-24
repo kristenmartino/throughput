@@ -79,4 +79,14 @@ def compute_supply():
     o['dcUnits'] = 1200; o['dcDays'] = 14; o['pipeUnits'] = 4200
     o['flow'] = 300; o['transit'] = 14; o['pipe'] = 300 * 14; o['transitAir'] = 3; o['pipeAir'] = 900; o['pipeCut'] = 4200 - 900
     out.update({f'sc5.{k}': float(v) for k, v in o.items()})
+    # ---- sc2
+    o = {}; pts = [(10, 20, 400), (40, 10, 300), (30, 40, 300)]; V = sum(p[2] for p in pts)
+    for i, (x, y, v) in enumerate(pts): o[f'x{i + 1}'] = x; o[f'y{i + 1}'] = y; o[f'v{i + 1}'] = v
+    o['vTot'] = V; o['cgX'] = sum(x * v for x, y, v in pts) / V; o['cgY'] = sum(y * v for x, y, v in pts) / V
+    o['avgX'] = sum(p[0] for p in pts) / 3; o['avgY'] = sum(p[1] for p in pts) / 3
+    o.update(price=40, freight=3, ins=0.40, dutyRate=0.05, duty=2.0, broker=0.60, inland=1.00, domestic=45)
+    o['landed'] = 40 + 3 + 0.40 + 2.0 + 0.60 + 1.00; o['landedNoDuty'] = o['landed'] - 2.0; o['cif'] = 40 + 3 + 0.40
+    o['offPrem'] = o['landed'] / 45 - 1; o['priceGap'] = (45 - 40) / 45
+    o.update(dio=60, dso=45, dpo=50); o['c2c'] = 60 + 45 - 50; o['c2cWrong'] = 60 + 45 + 50; o['c2cDpo65'] = 60 + 45 - 65
+    out.update({f'sc2.{k}': float(v) for k, v in o.items()})
     return out

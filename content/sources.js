@@ -80,5 +80,6 @@ module.exports = {
   icc: ['ICC: Incoterms rules (eleven three-letter trade terms; Incoterms 2020 in force from 1 January 2020)', 'https://iccwbo.org/business-solutions/incoterms-rules/', 'Read'],
   incoList: ['CSO Ireland: Incoterms 2020 guidebook (seven any-mode rules, four sea rules; DPU replaces DAT)', 'https://www.cso.ie/en/methods/prices/importpriceindexsurvey/incotermsguidebook/', 'Relayed (search text)'],
   dhlInco: ['DHL: Incoterms 2020 rules and changes from 2010 (CIP insurance at ICC A)', 'https://www.dhl.com/gb-en/home/our-divisions/global-forwarding/help-and-support/incoterms-2020.html', 'Relayed (search text)'],
+  scor: ['ASCM: SCOR Digital Standard, version 14.0 (2022), summary', 'https://scor.ascm.org/api/files/24', 'Read'],
   willems: ['Willems (2001), Inventory Basics (from S. C. Graves\'s notes), MIT 15.762J materials', 'https://dspace.mit.edu/bitstream/handle/1721.1/71720/15-762j-spring-2005/contents/lecture-notes/inventory_notes.pdf', 'Read']
 };
