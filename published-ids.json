@@ -1,0 +1,22 @@
+{
+ "note": "Link ids already published (lanes, sections, craft, sims, lessons, questions, cards). Links from other apps depend on them; never remove or rename one. Run `node build.js --record` after a publish.",
+ "lanes": [
+  "quality",
+  "supply-chain",
+  "coo"
+ ],
+ "sections": [
+  "quality-overview",
+  "quality-define",
+  "quality-measure",
+  "quality-analyze",
+  "quality-improve",
+  "quality-control",
+  "quality-mock"
+ ],
+ "craft": [],
+ "sims": [],
+ "lessons": [],
+ "questions": [],
+ "cards": []
+}

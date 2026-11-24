@@ -1,0 +1,75 @@
+/* study-kit engines.css: Craft, Simulations and role-play styles, taken from Inspect & Adapt V32 (index.src.html). Needs the variables and base classes in shell.css or the host app. */
+/* simulations */
+.smeters { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 8px; background: var(--sheet); border: 1px solid var(--rule); border-radius: 10px; padding: 10px 12px; }
+.smeter { display: grid; gap: 3px; min-width: 0; }
+.smeter .mlab { font-family: var(--f-mono); font-size: 11.5px; letter-spacing: .05em; text-transform: uppercase; color: var(--muted); }
+.smeter .mval { font-family: var(--f-mono); font-size: 15px; font-weight: 600; font-variant-numeric: tabular-nums; }
+.smeter .mval em { font-style: normal; font-size: 12.5px; }
+.smeter .mval em.up { color: var(--ok); } .smeter .mval em.down { color: var(--bad); }
+.smeter .mbar { display: block; height: 6px; border-radius: 3px; background: var(--rule); overflow: hidden; }
+.smeter .mbar i { display: block; height: 100%; border-radius: 3px; }
+.smeter .mbar i.ok { background: var(--ok); } .smeter .mbar i.warn { background: var(--warn); } .smeter .mbar i.bad { background: var(--bad); }
+.chat { display: grid; gap: 10px; }
+.bubble { max-width: 88%; padding: 10px 12px; border-radius: 12px; line-height: 1.45; font-size: 16px; white-space: pre-wrap; overflow-wrap: anywhere; }
+.bubble .who { display: block; font-family: var(--f-mono); font-size: 11.5px; letter-spacing: .05em; text-transform: uppercase; color: var(--muted); margin-bottom: 2px; }
+.bubble.them { justify-self: start; background: var(--sheet); border: 1px solid var(--rule); }
+.bubble.me { justify-self: end; background: var(--marker-soft); }
+.saved { font-family: var(--f-mono); font-size: 12.5px; color: var(--ok); }
+/* ------------------------------------------------------------ craft packets */
+.cchip { font-family: var(--f-mono); font-size: 12px; font-weight: 600; padding: 3px 8px; border-radius: 3px; white-space: nowrap; }
+.cchip.draft { background: var(--warn-soft); color: var(--warn); }
+.cchip.ok { background: var(--ok-soft); color: var(--ok); }
+.cchip.self { background: var(--marker-soft); color: var(--marker); }
+.cchip.kind { background: var(--sunk); color: var(--muted); }
+.pkcard, .stagecard { display: grid; gap: 12px; }
+.pkcard > *, .stagecard > * { min-width: 0; }
+.pkcard h2, .stagecard h2 { font-family: var(--f-display); font-stretch: 112%; font-weight: 800; font-size: 22px; line-height: 1.2; }
+#stage-h:focus { outline: none; }
+.tasklist, .checklist { margin: 0; padding-left: 24px; display: grid; gap: 6px; }
+.tasklist li, .checklist li { font-size: 16.5px; }
+ul.plain { margin: 0; padding-left: 20px; display: grid; gap: 6px; }
+.pk { display: grid; gap: 10px; overflow-wrap: anywhere; }
+.pk > * { min-width: 0; }
+.pk h3 { font-family: var(--f-display); font-stretch: 108%; font-weight: 780; font-size: 16.5px; margin-top: 8px; padding-top: 12px; border-top: 1px solid var(--rule); }
+.pk > h3:first-child { margin-top: 0; padding-top: 0; border-top: 0; }
+.pk p, .pk li, .pk dd, .pk td, .pk th { font-size: 16px; line-height: 1.5; }
+.pk ul, .pk ol { margin: 0; padding-left: 22px; display: grid; gap: 6px; }
+.pk blockquote { margin: 0; padding: 10px 12px; border-left: 3px solid var(--marker); background: var(--marker-soft); border-radius: 0 8px 8px 0; font-size: 16px; }
+.pktbl { width: 100%; border-collapse: collapse; }
+.pktbl th, .pktbl td { text-align: left; padding: 7px 8px; border-bottom: 1px solid var(--rule); vertical-align: top; }
+.pktbl thead th { font-family: var(--f-mono); font-size: 12px; letter-spacing: .06em; text-transform: uppercase; color: var(--muted); font-weight: 600; }
+.pktbl tbody th { font-weight: 400; }
+.pktbl td { font-variant-numeric: tabular-nums; text-align: right; overflow-wrap: anywhere; }
+.pktbl thead th:last-child { text-align: right; }
+.srows { display: grid; gap: 8px; }
+.srow { border: 1px solid var(--rule); border-radius: 8px; padding: 9px 11px; display: grid; gap: 4px; background: var(--sunk); }
+.srow-h { font-weight: 700; }
+.srow dl { margin: 0; display: grid; gap: 3px; }
+.srow dl > div { display: grid; grid-template-columns: 6.2rem minmax(0, 1fr); gap: 8px; }
+.srow dt { font-family: var(--f-mono); font-size: 12px; color: var(--muted); padding-top: 3px; }
+.srow dd { margin: 0; }
+.strows { display: grid; gap: 8px; }
+.strow {
+  appearance: none; cursor: pointer; text-align: left; min-height: 52px; padding: 10px 12px; border-radius: 10px;
+  border: 1.5px solid var(--rule); background: var(--sheet); color: var(--ink);
+  display: grid; grid-template-columns: 1.6rem minmax(0, 1fr) auto; gap: 8px; align-items: center;
+}
+.strow:hover { border-color: var(--marker); }
+.strow .n { font-family: var(--f-mono); font-weight: 600; color: var(--marker); }
+.strow .nm { font-weight: 700; font-size: 16px; }
+.answer, .stackgap { display: grid; gap: 8px; }
+.stackgap:empty { display: none; }
+#craft-text { min-height: 280px; }
+.fbx { border: 1px solid var(--rule); border-radius: 10px; background: var(--sheet); padding: 12px 14px; display: grid; gap: 10px; }
+.fbx.done { border-color: var(--ok); }
+.fblist { list-style: none; margin: 0; padding: 0; display: grid; gap: 8px; }
+.fblist li { display: grid; gap: 3px; padding: 8px 10px; border-radius: 8px; border-left: 4px solid var(--rule); background: var(--sunk); font-size: 15.5px; }
+.fblist li.meets { border-left-color: var(--ok); }
+.fblist li.partly { border-left-color: var(--warn); }
+.fblist li.misses { border-left-color: var(--bad); }
+.fbst { font-family: var(--f-mono); font-size: 12px; font-weight: 600; letter-spacing: .06em; text-transform: uppercase; }
+.fblist li.meets .fbst { color: var(--ok); }
+.fblist li.partly .fbst { color: var(--warn); }
+.fblist li.misses .fbst { color: var(--bad); }
+.fbwhy { color: var(--muted); }
+.fbrw { white-space: pre-wrap; }

@@ -1,0 +1,12 @@
+{
+  "name": "throughput",
+  "private": true,
+  "description": "Throughput: a phone-first study app for operations (Six Sigma Green Belt quality, supply chain and procurement, the COO chair), published as a claude.ai artifact. Engines from study-kit.",
+  "scripts": {
+    "build": "node build.js",
+    "record": "node build.js --record",
+    "test": "node build.js && node test.js"
+  },
+  "devDependencies": { "playwright": "1.63.0" },
+  "engines": { "node": ">=20" }
+}
