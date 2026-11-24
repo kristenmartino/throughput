@@ -112,7 +112,7 @@ function compute2() {
   // im-4 kanban cards: demand 180 an hour, replenishment lead time 2 h, safety factor 15%, 25 a container.
   { const D = 180, L = 2, a = 0.15, C = 25, k = D * L * (1 + a) / C; N.im4 = { D, L, a, C, k, kUp: Math.ceil(k), noSafety: D * L / C }; }
   // im-6 cycle-time reduction: batch versus one-piece flow, SMED.
-  { const steps = 4, per = 1, batch = 50, batchLead = steps * per * batch, flowLead = per * batch + (steps - 1) * per, firstBatch = steps * per * batch, firstFlow = steps * per;
+  { const steps = 4, per = 1, batch = 50, batchLead = steps * per * batch, flowLead = per * batch + (steps - 1) * per, firstBatch = (steps - 1) * per * batch + per, firstFlow = steps * per;
     const setup = 80, internal = 50, external = 30, afterSep = internal, afterConv = internal - 20, afterStream = (internal - 20) * 0.6;
     N.im6 = { steps, per, batch, batchLead, flowLead, firstBatch, firstFlow, setup, internal, external, afterSep, afterConv, afterStream, cut: setup - afterStream, cutPct: (setup - afterStream) / setup }; }
 
@@ -142,6 +142,16 @@ function compute2() {
     N.co4 = { pbar, n, uclP: pbar + 3 * sp, lclPraw: pbar - 3 * sp, lclP: Math.max(0, pbar - 3 * sp), np, uclNp: np + 3 * snp, lclNp: np - 3 * snp,
       cbar, uclC: cbar + 3 * Math.sqrt(cbar), lclCraw: cbar - 3 * Math.sqrt(cbar), ub, un, uclU: ub + 3 * Math.sqrt(ub / un), lclUraw: ub - 3 * Math.sqrt(ub / un),
       n100ucl: pbar + 3 * Math.sqrt(pbar * (1 - pbar) / 100), nistC: 16 + 3 * Math.sqrt(16), nistCl: 16 - 3 * Math.sqrt(16) }; }
+  // wrong-answer values and small extras for the Analyze questions
+  Object.assign(N.an3, { w1: N.an3.b1 * 172, w2: N.an3.b1 * 172 - N.an3.b0, ybar: mean(N.an2.y.split(', ').map(Number)) });
+  Object.assign(N.an5, { w1: (N.an5.mean - 500) / N.an5.s, w2: (N.an5.mean - 500) / (N.an5.s / 10) });
+  Object.assign(N.an6, { sRatio: N.an6.s1 / N.an6.s2, inv: 1 / N.an6.F, wDiff: N.an6.v1 - N.an6.v2, wSS: N.an6.sst / N.an6.sse, wMS: N.an6.mst / N.an6.sse });
+  Object.assign(N.an7, { wRow: N.an7.r1 / 3, wCol: N.an7.c1 / 3 });
+  Object.assign(N.im2, { Ahalf: N.im2.A / 2, ABx2: N.im2.AB * 2 }); N.im4.noSafetyUp = Math.ceil(N.im4.noSafety);
+  Object.assign(N.ov3, { shortUnits: N.ov3.demand - N.ov3.maxOut, taktNoBreak: 2 * 8 * 60 / N.ov3.demand, taktOneShift: (8 * 60 - 30) / N.ov3.demand });
+  Object.assign(N.ov4, { wRatio: N.ov4.vaT / N.ov4.nva, wNva: N.ov4.nva / N.ov4.lead });
+  N.an8.gapPts = (0.95 - 0.82) * 100;
+  N.an9 = { pa: 0.02, pb: 0.05, and: 0.02 * 0.05, or: 1 - (1 - 0.02) * (1 - 0.05), sum: 0.02 + 0.05 };
   // wrong-answer values for the Control questions
   { const c = N.co3, k = N.k, p = N.co4;
     Object.assign(c, { uclXA2n2: c.xbb + k.A2n2 * c.rbar, a2r: c.A2 * c.rbar, r3: 3 * c.rbar, uclIw1: c.xbI + 3 * c.mrb, uclIw2: c.xbI + k.D4n2 * c.mrb, uclIw3: c.xbI + c.mrb / k.d2n2 });

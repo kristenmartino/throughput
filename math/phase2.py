@@ -95,7 +95,7 @@ def compute2():
                     aAtBlo=cell[(1, -1)] - cell[(-1, -1)], aAtBhi=cell[(1, 1)] - cell[(-1, 1)], grand=coef[0], runs=8, best=cell[(1, 1)])
     kk = 180 * 2 * 1.15 / 25
     N['im4'] = dict(D=180, L=2, a=0.15, C=25, k=kk, kUp=math.ceil(kk), noSafety=180 * 2 / 25)
-    N['im6'] = dict(steps=4, per=1, batch=50, batchLead=4 * 50, flowLead=50 + 3, firstBatch=200, firstFlow=4, setup=80, internal=50, external=30, afterSep=50, afterConv=30,
+    N['im6'] = dict(steps=4, per=1, batch=50, batchLead=4 * 50, flowLead=50 + 3, firstBatch=3 * 50 + 1, firstFlow=4, setup=80, internal=50, external=30, afterSep=50, afterConv=30,
                     afterStream=30 * 0.6, cut=80 - 18, cutPct=(80 - 18) / 80)
 
     K = {}
@@ -121,6 +121,15 @@ def compute2():
     N['co4'] = dict(pbar=pbar, n=n, uclP=pbar + 3 * s_, lclPraw=pbar - 3 * s_, lclP=max(0, pbar - 3 * s_), np=np_, uclNp=np_ + 3 * snp, lclNp=np_ - 3 * snp,
                     cbar=6.2, uclC=6.2 + 3 * math.sqrt(6.2), lclCraw=6.2 - 3 * math.sqrt(6.2), ub=1.6, un=5, uclU=1.6 + 3 * math.sqrt(1.6 / 5), lclUraw=1.6 - 3 * math.sqrt(1.6 / 5),
                     n100ucl=pbar + 3 * math.sqrt(pbar * (1 - pbar) / 100), nistC=28, nistCl=4)
+    a3 = N['an3']; a3.update(w1=a3['b1'] * 172, w2=a3['b1'] * 172 - a3['b0'], ybar=float(y.mean()))
+    a5 = N['an5']; a5.update(w1=(a5['mean'] - 500) / a5['s'], w2=(a5['mean'] - 500) / (a5['s'] / 10))
+    a6 = N['an6']; a6.update(sRatio=a6['s1'] / a6['s2'], inv=1 / a6['F'], wDiff=a6['v1'] - a6['v2'], wSS=a6['sst'] / a6['sse'], wMS=a6['mst'] / a6['sse'])
+    a7 = N['an7']; a7.update(wRow=a7['r1'] / 3, wCol=a7['c1'] / 3)
+    N['im2'].update(Ahalf=N['im2']['A'] / 2, ABx2=N['im2']['AB'] * 2); N['im4']['noSafetyUp'] = math.ceil(180 * 2 / 25)
+    N['ov3'].update(shortUnits=360 - avail / cycle, taktNoBreak=960 / 360, taktOneShift=450 / 360)
+    N['ov4'].update(wRatio=vaT / (lead - vaT), wNva=(lead - vaT) / lead)
+    N['an8']['gapPts'] = (0.95 - 0.82) * 100
+    N['an9'] = dict(pa=0.02, pb=0.05, **{'and': 0.02 * 0.05, 'or': 1 - 0.98 * 0.95}, sum=0.07)
     c, p = N['co3'], N['co4']
     c.update(uclXA2n2=xbb + K['A2n2'] * rbar, a2r=K['A2n5'] * rbar, r3=3 * rbar, uclIw1=ind.mean() + 3 * mr.mean(), uclIw2=ind.mean() + K['D4n2'] * mr.mean(), uclIw3=ind.mean() + mr.mean() / K['d2n2'])
     p.update(qbar=1 - pbar, wNoN=pbar + 3 * math.sqrt(pbar * (1 - pbar)), wPx3=pbar + 3 * pbar, sqrtC=math.sqrt(6.2), cW1=6.2 + 3 * 6.2, cW2=6.2 + math.sqrt(6.2), cW3=6.2 + 3 * math.sqrt(6.2 / 5))
