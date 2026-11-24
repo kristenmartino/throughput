@@ -17,7 +17,7 @@ Checker: Claude Sonnet (subagent), given `questions.txt` (90 items from Overview
 | co-3 ¶5 | The I-chart limit is 27.3345, printed 27.33; from rounded MR̄ the checker got 27.335 | No change: the printed value is correct to two decimals |
 | co-3 ¶3 | Checker recalled D4(5) = 2.114 and doubted NIST prints 2.115 | No change: NIST's table was read twice this session and prints 2.115; the lesson already gives both |
 | co-1 ¶3 | Checker could not confirm ASQ lists "10 of 11, 12 of 14, 16 of 20" | No change: read on ASQ's control chart page this session |
-| Pattern | The keyed option is the longest in 39 of 90 (43%) | Not changed in this pass, as in Phase 1; worth a trim when Kristen reviews |
+| Pattern | The keyed option is the longest in 39 of 90 (43%) | Fixed later the same day on Kristen's request, across all six decks, with a build rule: `docs/blind-check-option-lengths.md` |
 
 ## Also done before the check
 - Five questions that rely on a lesson's chart or data set (AN-01, AN-04, IM-05, IM-06, CO-01) are marked `mock: false` and never drawn into the timed mock; each deck still has enough stand-alone questions for its draw (build enforces).

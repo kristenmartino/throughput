@@ -76,6 +76,13 @@ const DECKS = ['overview', 'define', 'measure', 'analyze', 'improve', 'control']
     return out;
   });
   if (o) o.counts.forEach((n, i) => { const got = questions.filter(q => q.lesson === d.prefix + '-' + (i + 1)).length; if (got !== n) errors.push(w + ': lesson ' + d.prefix + '-' + (i + 1) + ' needs ' + n + ' questions (outline), has ' + got); });
+  // Option length must not give the answer away (blind check, Nov 24): the keyed option is never more than 1.3 times
+  // its longest distractor, and it is the strictly longest option in at most 30% of a deck's questions (25% is chance).
+  { let longest = 0;
+    for (const q of questions) { const L = q.options.map(o => o.length), k = L[q.answer], other = Math.max(...L.filter((x, j) => j !== q.answer));
+      if (k > 1.3 * other) errors.push('question ' + q.id + ': keyed option is ' + (k / other).toFixed(2) + ' times the longest distractor (limit 1.3)');
+      if (L.every((x, j) => j === q.answer || x < k)) longest++; }
+    if (longest > Math.floor(0.3 * questions.length)) errors.push(w + ': keyed option is the longest in ' + longest + ' of ' + questions.length + ' questions (limit ' + Math.floor(0.3 * questions.length) + ')'); }
   { const n = questions.length, lo = Math.floor(0.2 * n), hi = Math.ceil(0.3 * n);   // each of A–D keyed 20–30% of the time
     if (pos.some(k => k < lo || k > hi)) errors.push(w + ': keyed answers should spread over A–D, each ' + lo + '–' + hi + ' (got ' + pos.join('/') + ')'); }
   const cards = src.cards.map((c, i) => {
