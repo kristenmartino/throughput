@@ -7,7 +7,10 @@
 <style>
 __SHELL_CSS__
 __KIT_CSS__
-/* Throughput additions (from Blast Radius's shell, Nov 23) */
+/* Throughput additions (shell from Blast Radius, Nov 23) */
+:root { --c1: #1c55d4; --c2: #b3541e; --c3: #7b3fb6; --c4: #0f7d6a; }
+@media (prefers-color-scheme: dark) { :root:not([data-theme="light"]) { --c1: #86a8ff; --c2: #f0a167; --c3: #c39bf0; --c4: #5fd0bb; } }
+:root[data-theme="dark"] { --c1: #86a8ff; --c2: #f0a167; --c3: #c39bf0; --c4: #5fd0bb; }
 .lanelist { display: grid; gap: 10px; }
 .lanebtn { appearance: none; width: 100%; text-align: left; cursor: pointer; background: var(--sheet); color: var(--ink);
   border: 1px solid var(--rule); border-left: 6px solid var(--deck); border-radius: var(--r); padding: 12px 14px; display: grid; gap: 4px; min-height: 64px; }
@@ -21,8 +24,37 @@ __KIT_CSS__
 .secrow:last-child { border-bottom: 0; }
 .secrow .top { display: flex; flex-wrap: wrap; gap: 4px 10px; align-items: baseline; justify-content: space-between; }
 .secrow b { font-size: 16px; overflow-wrap: anywhere; }
-.secrow .k { font-family: var(--f-mono); font-size: 12px; color: var(--muted); }
+.k { font-family: var(--f-mono); font-size: 12px; color: var(--muted); }
 .soon { font-family: var(--f-mono); font-size: 12px; padding: 2px 8px; border-radius: 999px; background: var(--warn-soft); color: var(--warn); }
+.items { display: grid; gap: 8px; margin-top: 6px; }
+.itemrow { display: grid; gap: 4px; padding: 10px 12px; border: 1px solid var(--rule); border-radius: 10px; background: var(--board); color: var(--ink); text-decoration: none; min-height: 44px; }
+.itemrow:hover { border-color: var(--marker); }
+.itemrow .top { display: flex; flex-wrap: wrap; gap: 4px 8px; align-items: baseline; justify-content: space-between; }
+.itemrow b { font-size: 15.5px; overflow-wrap: anywhere; }
+.prose p { font-size: 16px; line-height: 1.55; }
+.stem { font-size: 17px; font-weight: 600; line-height: 1.4; overflow-wrap: anywhere; }
+.src { margin: 0; padding-left: 18px; display: grid; gap: 4px; font-size: 14px; overflow-wrap: anywhere; }
+.lvchip { font-family: var(--f-mono); font-size: 11.5px; padding: 2px 7px; border-radius: 999px; background: var(--sunk); color: var(--muted); }
+.stat { display: grid; grid-template-columns: repeat(auto-fit, minmax(130px, 1fr)); gap: 8px; }
+.stat > div { background: var(--board); border: 1px solid var(--rule); border-radius: 10px; padding: 8px 10px; display: grid; gap: 2px; min-width: 0; }
+.stat .v { font-family: var(--f-display); font-weight: 780; font-size: 22px; line-height: 1.1; font-variant-numeric: tabular-nums; overflow-wrap: anywhere; }
+.stat .l { color: var(--muted); font-size: 13px; }
+.flash { min-height: 150px; display: grid; gap: 10px; align-content: center; text-align: center; }
+.flash .front { font-family: var(--f-display); font-weight: 780; font-size: 22px; overflow-wrap: anywhere; }
+.flash .back { font-size: 16.5px; line-height: 1.5; overflow-wrap: anywhere; }
+.qty { display: flex; align-items: stretch; gap: 8px; }
+.qty input { width: 100%; max-width: 140px; min-height: 48px; font-size: 22px; font-weight: 700; text-align: center; border: 1px solid var(--rule); border-radius: 10px; background: var(--sheet); color: var(--ink); font-variant-numeric: tabular-nums; }
+.qty .btn { min-width: 48px; font-size: 20px; }
+.scroll { overflow-x: auto; }
+table.t { border-collapse: collapse; width: 100%; font-size: 14px; font-variant-numeric: tabular-nums; }
+table.t th, table.t td { padding: 6px 8px; border-bottom: 1px solid var(--rule); text-align: right; white-space: nowrap; }
+table.t th:first-child, table.t td:first-child { text-align: left; }
+table.t th { font-weight: 600; color: var(--muted); font-size: 13px; }
+.fig { width: 100%; height: auto; display: block; }
+.legend { display: flex; flex-wrap: wrap; gap: 6px 14px; font-size: 13.5px; }
+.legend i { display: inline-block; width: 14px; height: 3px; vertical-align: middle; margin-right: 6px; border-radius: 2px; }
+.seats { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 8px; }
+.seats .tog { white-space: normal; text-align: left; }
 .foot { color: var(--muted); font-size: 13px; display: grid; gap: 6px; }
 </style>
 </head>
@@ -30,26 +62,33 @@ __KIT_CSS__
 <div id="app"></div>
 <script>const BANK = __BANK__;</script>
 <script>__STUDY_KIT__</script>
+<script>__BEER_ENGINE__</script>
 <script>
 (function () {
   'use strict';
-  const K = window.StudyKit, app = document.getElementById('app');
+  const K = window.StudyKit, BG = window.BeerEngine, app = document.getElementById('app');
   const APP = 'throughput';
   const esc = s => String(s == null ? '' : s).replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', '\'': '&#39;' }[c]));
   const X = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" aria-hidden="true"><path d="M6 6l12 12M18 6L6 18"/></svg>';
-  const LANES = BANK.lanes, SECTIONS = BANK.sections;
+  const LANES = BANK.lanes, SECTIONS = BANK.sections, DECKS = BANK.decks, BEER = BANK.beer;
   const laneById = id => LANES.find(l => l.id === id);
+  const deckById = id => DECKS.find(d => d.id === id);
+  const QS = {}, LESSONS = {}, CARDS = {};
+  DECKS.forEach(d => { d.questions.forEach(q => { QS[q.id] = Object.assign({ deck: d.id }, q); }); d.lessons.forEach(l => { LESSONS[l.id] = Object.assign({ deck: d.id }, l); }); d.cards.forEach(c => { CARDS[c.id] = Object.assign({ deck: d.id }, c); }); });
   let SCREEN = 'home', VIEW = {}, SAMPLE = null;
+  const money2 = h => '$' + (h / 2).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 });   // half-dollars to dollars
 
-  // ---- preferences (last lane): one small document, data/users/<uid>/prefs, saved with study-kit's store
-  const PREF_KEYS = ['lane'];
-  const prefs = K.save.createStore({
-    localKey: APP + ':prefs:v1', doc: 'prefs', field: 'prefs',
-    normalize(x) { const o = {}; if (!x || typeof x !== 'object') return o; for (const k of PREF_KEYS) if (x[k] && typeof x[k] === 'object' && typeof x[k].ts === 'number') o[k] = { ts: x[k].ts, v: x[k].v }; return o; },
-    onRemote() { if (SCREEN === 'home') host.keepScroll(); },
-    onStatus() { const el = document.getElementById('prefs-saved'); if (el) el.textContent = prefs.statusText(); }
-  });
-  prefs.loadLocal();
+  // ---- stores (study-kit's save helper): prefs, deck progress, Beer Game
+  const status = () => { for (const [id, s] of [['prefs-saved', prefs], ['deck-saved', decks], ['beer-saved', beer]]) { const el = document.getElementById(id); if (el && s) el.textContent = s.statusText(); } };
+  const keep = ok => x => { const o = {}; if (!x || typeof x !== 'object') return o; for (const k in x) if (ok(k) && x[k] && typeof x[k] === 'object' && typeof x[k].ts === 'number') o[k] = JSON.parse(JSON.stringify(x[k])); return o; };
+  const prefs = K.save.createStore({ localKey: APP + ':prefs:v1', doc: 'prefs', field: 'prefs', normalize: keep(k => k === 'lane'), onRemote() { if (SCREEN === 'home') host.keepScroll(); }, onStatus: () => status() });
+  const decks = K.save.createStore({ localKey: APP + ':decks:v1', doc: 'decks', field: 'decks', normalize: keep(k => !!(QS[k] || CARDS[k])),
+    onRemote() { if (['deck', 'lesson', 'lane', 'cards'].indexOf(SCREEN) !== -1) host.keepScroll(); }, onStatus: () => status() });
+  const beer = K.save.createStore({ localKey: APP + ':beer:v1', doc: 'beer', field: 'beer', normalize: keep(k => /^(game|last|seat-[0-3])$/.test(k)),
+    onRemote() { if (SCREEN === 'beer' || SCREEN === 'home') host.keepScroll(); }, onStatus: () => status() });
+  prefs.loadLocal(); decks.loadLocal(); beer.loadLocal();
+  // A finished or abandoned game is stored as { done: true }, so other devices drop it too.
+  const game = () => { const v = beer.get('game'); return v && !v.done ? v : undefined; };
 
   // ---- theme (this device only)
   const THEME_KEY = APP + ':theme';
@@ -73,7 +112,7 @@ __KIT_CSS__
     confirm(title, body, ok, cb) { if (window.confirm(title + '\n\n' + body)) cb(); },
     copy(text, msg) { try { navigator.clipboard.writeText(text).then(() => host.toast(msg), () => host.toast(text)); } catch (e) { host.toast(text); } },
     linkBase: '',
-    lessonTitle: () => null,
+    lessonTitle: id => LESSONS[id] ? LESSONS[id].title : null,
     fmtDate: ts => { try { return new Date(ts).toLocaleDateString(undefined, { month: 'short', day: 'numeric' }); } catch (e) { return ''; } },
     icon: { ok: '✓', bad: '✗' }
   };
@@ -83,8 +122,15 @@ __KIT_CSS__
   const sims = K.sims.create({ runs: BANK.runs, roleplays: BANK.roleplays, appKey: APP, runNoun: 'Simulation', rpHeading: 'Role-plays', host,
     roleplay: { learner: 'operations leader', rules: ['guarded', 'noCoaching', 'noUnpromptedOffer'], scoring: ['outcomeAgreesWithScore', 'verifiedQuotes'] } });
 
+  const draftChip = x => x && x.status === 'Draft' ? '<span class="cchip draft">Draft</span>' : '';
+  const itemRow = (href, title, meta, status) => '<a class="itemrow" href="' + esc(href) + '"><span class="top"><b>' + esc(title) + '</b>' + draftChip({ status }) + '</span>' + (meta ? '<span class="k">' + esc(meta) + '</span>' : '') + '</a>';
+  // Deck progress: a question counts as right if its last answer was right.
+  const qRec = id => decks.get(id);
+  const deckStats = d => { const qs = d.questions, seen = qs.filter(q => qRec(q.id)), right = seen.filter(q => qRec(q.id).last === 1); const got = d.cards.filter(c => (decks.get(c.id) || {}).mark === 'got').length; return { n: qs.length, seen: seen.length, right: right.length, cards: d.cards.length, got }; };
+  const lessonStats = (d, l) => { const qs = d.questions.filter(q => q.lesson === l.id); return { n: qs.length, right: qs.filter(q => (qRec(q.id) || {}).last === 1).length }; };
+
   function renderHome() {
-    const last = prefs.get('lane');
+    const last = prefs.get('lane'), g = game();
     app.innerHTML = '<header class="mast"><div class="wrap"><div class="brand">Throughput</div><p class="sub">Operations: quality and process improvement, supply chain, and the COO chair.</p>' +
       '<div class="pills"><span class="pill">study-kit <b>' + esc(BANK.kitVersion) + '</b></span><span class="pill" id="prefs-saved">' + esc(prefs.statusText()) + '</span></div></div></header>' +
       '<main class="wrap">' +
@@ -92,7 +138,9 @@ __KIT_CSS__
       LANES.map(l => '<button class="lanebtn" style="--deck:var(' + l.color + ')" data-act="lane" data-id="' + l.id + '"' + (l.active ? '' : ' disabled aria-disabled="true"') + '>' +
         '<span class="nm">' + esc(l.name) + '</span><span class="bl">' + esc(l.blurb) + '</span>' +
         '<span class="st">' + (l.active ? (last && last.v === l.id ? 'Open · last visited' : 'Open') : 'Later') + '</span></button>').join('') +
-      '</div></section>' + foot() + '</main>';
+      '</div></section>' +
+      '<section aria-labelledby="sm-h"><div class="section-h"><h2 id="sm-h">Simulations</h2><span class="hint">Joins the Supply chain lane when it opens</span></div><div class="items">' +
+      itemRow('#beer-game', BEER.title, (g ? 'In progress · ' + BG.SEATS[g.seat] : 'Supply chain · bullwhip · 32 weekly orders'), BEER.status) + '</div></section>' + foot() + '</main>';
   }
   function renderLane() {
     const l = laneById(VIEW.id);
@@ -102,32 +150,205 @@ __KIT_CSS__
       '<main class="wrap"><section class="card" style="display:grid;gap:10px"><h2 class="ttl" style="font-size:19px">' + esc(l.name) + '</h2><p class="note">' + esc(l.blurb) + '</p>' +
       (BANK.exam[l.id] ? '<p class="note"><b>The exam:</b> ' + esc(BANK.exam[l.id]) + '</p>' : '') + '</section>' +
       '<section aria-labelledby="sc-h"><div class="section-h"><h2 id="sc-h">Sections</h2><span class="hint">Weighted as the exam is</span></div><div class="card" style="padding-block:4px">' +
-      secs.map(s => '<div class="secrow" id="' + esc(l.id + '-' + s.id) + '"><div class="top"><b>' + esc(s.title) + '</b><span class="soon">Phase ' + s.phase + '</span></div>' +
-        '<span class="k">' + esc(s.kind) + (s.questions ? ' · ' + s.questions + ' of 100 scored questions' : '') + ' · not built yet</span></div>').join('') +
+      secs.map(s => { const d = deckById(s.id), st = d && deckStats(d);
+        return '<div class="secrow" id="' + esc(l.id + '-' + s.id) + '"><div class="top"><b>' + esc(s.title) + '</b>' + (d ? '<span class="k">' + esc(s.kind) + '</span>' : '<span class="soon">Phase ' + s.phase + '</span>') + '</div>' +
+          (d ? '<div class="items">' + itemRow('#deck-' + d.id, d.title + ' deck', s.questions + ' of 100 scored questions · ' + d.lessons.length + ' lessons · ' + st.right + ' of ' + st.n + ' right', 'Draft') + '</div>'
+            : '<span class="k">' + esc(s.kind) + (s.questions ? ' · ' + s.questions + ' of 100 scored questions' : '') + ' · not built yet</span>') + '</div>'; }).join('') +
       '</div></section>' + foot() + '</main>';
   }
+
+  // ---- decks
+  function renderDeck() {
+    const d = deckById(VIEW.id); if (!d) return host.go('lane', { id: 'quality' });
+    const st = deckStats(d);
+    app.innerHTML = host.header(d.title, 'lane', 'quality', 'Back to the Quality lane', d.scored + ' of 100') +
+      '<main class="wrap"><section class="card" style="display:grid;gap:10px"><div class="row"><span class="cchip draft">Draft</span><span class="lvchip">ASQ BoK section ' + esc(d.bok) + '</span></div>' +
+      '<div class="stat"><div><span class="v">' + st.right + '/' + st.n + '</span><span class="l">questions right (last try)</span></div><div><span class="v">' + st.got + '/' + st.cards + '</span><span class="l">cards marked Got it</span></div></div>' +
+      '<div class="row"><button class="btn btn-primary" data-act="practice" data-id="' + d.id + '">Practice 10</button><a class="btn" href="#cards-' + d.id + '">Recall cards</a></div>' +
+      '<p class="note" id="deck-saved">' + esc(decks.statusText()) + '</p></section>' +
+      '<section aria-labelledby="ls-h"><div class="section-h"><h2 id="ls-h">Lessons</h2><span class="hint">In Body of Knowledge order</span></div><div class="items">' +
+      d.lessons.map(l => { const s = lessonStats(d, l); return itemRow('#lesson-' + l.id, l.title, l.bok + ' · ' + s.n + ' questions · ' + s.right + ' right', l.status); }).join('') + '</div></section>' + foot() + '</main>';
+  }
+  function saveAnswer(id, right) { const r = qRec(id) || { n: 0, right: 0 }; decks.put(id, { ts: Date.now(), n: (r.n || 0) + 1, right: (r.right || 0) + (right ? 1 : 0), last: right ? 1 : 0 }); }
+  const PICKS = {};   // lesson answers shown on this visit
+  function questionCard(q, pick, act) {
+    const done = pick !== undefined;
+    return '<section class="card" style="display:grid;gap:10px" id="q-' + esc(q.id.toLowerCase()) + '"><div class="row"><span class="qid">' + esc(q.id) + '</span>' + draftChip(q) + '<span class="lvchip">' + esc(q.bok + ' · ' + q.level) + '</span></div><p class="stem">' + esc(q.stem) + '</p><div class="opts" role="group" aria-label="Options">' +
+      q.options.map((o, j) => { const cls = !done ? '' : j === q.answer ? ' is-correct' : j === pick ? ' is-wrong' : '';
+        return '<button class="opt' + cls + '" data-act="' + act + '" data-id="' + esc(q.id) + '" data-j="' + j + '"' + (done ? ' disabled' : '') + '><span class="key" aria-hidden="true">' + 'ABCD'[j] + '</span><span>' + esc(o) +
+          (done && j === q.answer ? '<span class="tag">Answer</span>' : done && j === pick ? '<span class="tag">Your pick</span>' : '') + '</span></button>'; }).join('') + '</div>' +
+      (done ? '<p class="verdict ' + (pick === q.answer ? 'ok' : 'bad') + '">' + (pick === q.answer ? 'Right' : 'Not quite') + '</p><p>' + esc(q.why) + '</p>' + (pick !== q.answer ? '<p class="note">' + esc(q.whyNot[pick]) + '</p>' : '') : '') + '</section>';
+  }
+  function renderLesson() {
+    const l = LESSONS[VIEW.id]; if (!l) return host.go('lane', { id: 'quality' });
+    const d = deckById(l.deck), i = d.lessons.findIndex(x => x.id === l.id), next = d.lessons[i + 1];
+    const qs = d.questions.filter(q => q.lesson === l.id);
+    app.innerHTML = host.header(d.title, 'deck', d.id, 'Back to the ' + d.title + ' deck', (i + 1) + ' of ' + d.lessons.length) +
+      '<main class="wrap"><article class="card prose" style="display:grid;gap:12px"><div class="row">' + draftChip(l) + '<span class="lvchip">BoK ' + esc(l.bok) + '</span></div><h2 class="ttl" style="font-size:20px">' + esc(l.title) + '</h2>' +
+      l.body.map(p => '<p>' + esc(p) + '</p>').join('') +
+      '<h3 class="k">Sources</h3><ul class="src">' + l.sources.map(s => '<li><a href="' + esc(s[1]) + '" target="_blank" rel="noopener">' + esc(s[0]) + '</a> <span class="lvchip">' + esc(s[2]) + '</span></li>').join('') + '</ul></article>' +
+      '<section aria-labelledby="lq-h" style="display:grid;gap:12px"><div class="section-h"><h2 id="lq-h">Check yourself</h2><span class="hint">' + qs.length + ' questions</span></div>' + qs.map(q => questionCard(q, PICKS[q.id], 'pick')).join('') + '</section>' +
+      '<div class="row">' + (next ? '<a class="btn btn-primary" href="#lesson-' + esc(next.id) + '">Next: ' + esc(next.title) + '</a>' : '<button class="btn btn-primary" data-act="practice" data-id="' + d.id + '">Practice 10 from the deck</button>') + '<a class="btn" href="#deck-' + esc(d.id) + '">Back to the deck</a></div>' + foot() + '</main>';
+  }
+  // Practice: ten questions, unseen first, then last-wrong, then the rest; shuffled within each group.
+  function practiceSet(d) {
+    const sh = a => { a = a.slice(); for (let i = a.length - 1; i > 0; i--) { const j = Math.floor(Math.random() * (i + 1)); [a[i], a[j]] = [a[j], a[i]]; } return a; };
+    const g = k => d.questions.filter(q => { const r = qRec(q.id); return k === 0 ? !r : k === 1 ? r && r.last === 0 : r && r.last === 1; });
+    return [].concat(sh(g(0)), sh(g(1)), sh(g(2))).slice(0, 10).map(q => q.id);
+  }
+  function renderPractice() {
+    const d = deckById(VIEW.deck); if (!d || !VIEW.ids) return host.go('deck', { id: (d || DECKS[0]).id });
+    const ids = VIEW.ids, i = VIEW.i || 0, picks = VIEW.picks || {};
+    if (i >= ids.length) {
+      const right = ids.filter(id => picks[id] === QS[id].answer).length;
+      app.innerHTML = host.header('Practice', 'deck', d.id, 'Back to the deck', 'Done') + '<main class="wrap"><section class="card" style="display:grid;gap:10px"><h2 class="ttl" style="font-size:20px">' + right + ' of ' + ids.length + ' right</h2>' +
+        '<ul class="src">' + ids.map(id => '<li><a href="#lesson-' + esc(QS[id].lesson) + '">' + esc(id) + '</a> ' + (picks[id] === QS[id].answer ? '✓' : '✗ review ' + esc(LESSONS[QS[id].lesson].title)) + '</li>').join('') + '</ul>' +
+        '<div class="row"><button class="btn btn-primary" data-act="practice" data-id="' + d.id + '">Practice 10 more</button><a class="btn" href="#deck-' + d.id + '">Back to the deck</a></div></section>' + foot() + '</main>';
+      return;
+    }
+    const q = QS[ids[i]], pick = picks[q.id];
+    app.innerHTML = host.header('Practice · ' + d.title, 'deck', d.id, 'Back to the deck', (i + 1) + '/' + ids.length) + '<main class="wrap" style="display:grid;gap:12px">' + questionCard(q, pick, 'ppick') +
+      (pick !== undefined ? '<div class="row"><button class="btn btn-primary" data-act="pnext">' + (i + 1 < ids.length ? 'Next question' : 'See the result') + '</button><a class="btn btn-quiet" href="#lesson-' + esc(q.lesson) + '">Open the lesson</a></div>' : '') + foot() + '</main>';
+  }
+  const cardList = () => { const d = deckById(VIEW.id); return d ? d.cards.filter(c => !VIEW.again || (decks.get(c.id) || {}).mark === 'again') : []; };
+  function renderCards() {
+    const d = deckById(VIEW.id); if (!d) return host.go('lane', { id: 'quality' });
+    const list = cardList(), i = Math.min(VIEW.i || 0, Math.max(0, list.length - 1)), c = list[i], st = deckStats(d);
+    app.innerHTML = host.header('Recall cards · ' + d.title, 'deck', d.id, 'Back to the deck', list.length ? (i + 1) + '/' + list.length : '0') +
+      '<main class="wrap" style="display:grid;gap:12px"><div class="row"><span class="cchip draft">Draft</span><span class="k">' + st.got + ' of ' + st.cards + ' marked Got it</span>' +
+      '<button class="tog" data-act="cards-only" aria-pressed="' + !!VIEW.again + '">Only cards marked Again</button></div>' +
+      (c ? '<section class="card flash" aria-live="polite"><span class="qid">' + esc(c.id) + '</span><div class="front">' + esc(c.front) + '</div>' + (VIEW.flip ? '<div class="back">' + esc(c.back) + '</div>' : '') + '</section>' +
+        (VIEW.flip ? '<div class="row"><button class="btn" data-act="card-mark" data-id="again">Again</button><button class="btn btn-primary" data-act="card-mark" data-id="got">Got it</button></div>'
+          : '<div class="row"><button class="btn btn-primary" data-act="card-flip">Show the answer</button><button class="btn btn-quiet" data-act="card-skip">Skip</button></div>')
+        : '<p class="note">No cards marked Again.</p>') +
+      '<p class="note" id="deck-saved">' + esc(decks.statusText()) + '</p>' + foot() + '</main>';
+  }
+
+  // ---- Beer Game (app-side engine, math/beer.js; rules approved Nov 24)
+  const SEAT_COL = ['--c1', '--c2', '--c3', '--c4'];
+  function chart(r, seat) {
+    const W = 360, H = 200, L = 30, R = 8, T = 10, B = 24, n = r.demand.length;
+    const series = r.hist.order.map((o, i) => ({ v: o, col: 'var(' + SEAT_COL[i] + ')', w: i === seat ? 3 : 1.8 })).concat([{ v: r.demand, col: 'var(--muted)', w: 1.5, dash: '4 3' }]);
+    const max = Math.max(8, ...series.map(s => Math.max(...s.v))), top = Math.ceil(max / 10) * 10;
+    const x = t => L + (W - L - R) * t / (n - 1), y = v => T + (H - T - B) * (1 - v / top);
+    const grid = [0, top / 2, top].map(v => '<line x1="' + L + '" x2="' + (W - R) + '" y1="' + y(v) + '" y2="' + y(v) + '" stroke="var(--rule)"/><text x="' + (L - 4) + '" y="' + (y(v) + 4) + '" text-anchor="end" font-size="10" fill="var(--muted)">' + v + '</text>').join('');
+    const ticks = [1, 12, 24, 36].filter(t => t <= n).map(t => '<text x="' + x(t - 1) + '" y="' + (H - 6) + '" text-anchor="' + (t === 1 ? 'start' : t === n ? 'end' : 'middle') + '" font-size="10" fill="var(--muted)">wk ' + t + '</text>').join('');
+    const lines = series.map(s => '<polyline fill="none" stroke="' + s.col + '" stroke-width="' + s.w + '"' + (s.dash ? ' stroke-dasharray="' + s.dash + '"' : '') + ' stroke-linejoin="round" points="' + s.v.map((v, t) => x(t).toFixed(1) + ',' + y(v).toFixed(1)).join(' ') + '"/>').join('');
+    return '<svg class="fig" viewBox="0 0 ' + W + ' ' + H + '" role="img" aria-label="Orders placed each week by the four stages, with customer demand; the table below gives the figures">' + grid + ticks + lines + '</svg>' +
+      '<div class="legend">' + BG.SEATS.map((s, i) => '<span><i style="background:var(' + SEAT_COL[i] + ')"></i>' + esc(s) + (i === seat ? ' (you)' : '') + '</span>').join('') + '<span><i style="background:var(--muted)"></i>Customer demand</span></div>';
+  }
+  function renderBeer() {
+    const g = game();
+    if (g) {
+      const r = BG.game(g.seat, g.orders || []);
+      if (!r.waiting) { finishGame(g); return renderBeer(); }
+      return renderBeerPlay(g, r);
+    }
+    if (VIEW.debrief && beer.get('last')) return renderDebrief(beer.get('last'));
+    const pick = VIEW.seat !== undefined ? VIEW.seat : 1;
+    app.innerHTML = host.header(BEER.title, 'home', '', 'Back to start', 'Draft') + '<main class="wrap" style="display:grid;gap:12px"><section class="card prose" style="display:grid;gap:10px"><div class="row">' + draftChip(BEER) + '<span class="lvchip">Supply chain · bullwhip</span></div>' +
+      BEER.briefing.map(p => '<p>' + esc(p) + '</p>').join('') + '</section>' +
+      '<section class="card" style="display:grid;gap:10px"><h2 class="ttl" style="font-size:18px">Pick your stage</h2><div class="seats" role="group" aria-label="Stage">' +
+      BG.SEATS.map((s, i) => { const res = beer.get('seat-' + i); return '<button class="tog" data-act="beer-seat" data-id="' + i + '" aria-pressed="' + (pick === i) + '">' + esc(s) + (i === 1 ? ' · suggested first' : '') + (res ? ' · best ' + money2(res.best2) : '') + '</button>'; }).join('') + '</div>' +
+      '<div class="row"><button class="btn btn-primary" data-act="beer-start" data-id="' + pick + '">Start as ' + esc(BG.SEATS[pick]) + '</button>' + (beer.get('last') ? '<button class="btn" data-act="beer-debrief">Last game\'s debrief</button>' : '') + '</div>' +
+      '<p class="note" id="beer-saved">' + esc(beer.statusText()) + '</p></section>' + foot() + '</main>';
+  }
+  function renderBeerPlay(g, r) {
+    const s = g.seat, w = r.waiting, k = w - 1, h = r.hist, orders = g.orders || [];
+    const spent = h.cost2[s].reduce((a, b) => a + b, 0), lastOrder = orders.length ? orders[orders.length - 1] : 4;
+    const val = VIEW.qty !== undefined ? VIEW.qty : lastOrder;
+    const from = Math.max(0, k - 5), rows = [];
+    for (let t = k; t >= from; t--) rows.push('<tr><td>' + (t + 1) + '</td><td>' + h.incoming[s][t] + '</td><td>' + h.recv[s][t] + '</td><td>' + h.inv[s][t] + '</td><td>' + h.back[s][t] + '</td><td>' + (t < k ? h.order[s][t] : '—') + '</td></tr>');
+    app.innerHTML = host.header(BEER.title + ' · ' + BG.SEATS[s], 'home', '', 'Back to start', 'Week ' + w) + '<main class="wrap" style="display:grid;gap:12px">' +
+      '<section class="card" style="display:grid;gap:10px" aria-live="polite"><div class="stat" id="beer-status">' +
+      [['On hand', h.inv[s][k]], ['Backlog', h.back[s][k]], [s === 0 ? 'Customer demand this week' : 'Order received this week', h.incoming[s][k]], ['Delivered to you this week', h.recv[s][k]], ['On order, not yet received', h.onorder[s][k]], ['Cost this week', money2(h.cost2[s][k])], ['Your cost so far', money2(spent)]]
+        .map(x => '<div><span class="v">' + esc(x[1]) + '</span><span class="l">' + esc(x[0]) + '</span></div>').join('') + '</div></section>' +
+      '<section class="card" style="display:grid;gap:10px"><label for="beer-qty" class="eyebrow">How many cases do you order this week?</label>' +
+      '<div class="qty"><button class="btn" data-act="beer-dec" aria-label="One less">−</button><input id="beer-qty" type="number" inputmode="numeric" min="0" max="999" step="1" value="' + esc(val) + '"><button class="btn" data-act="beer-inc" aria-label="One more">+</button></div>' +
+      '<div class="row"><button class="btn btn-primary" data-act="beer-order">Place order</button><button class="btn" data-act="beer-same">Same as last week (' + lastOrder + ')</button></div></section>' +
+      '<section aria-labelledby="bh-h"><div class="section-h"><h2 id="bh-h">Recent weeks</h2><span class="hint">Your stage only</span></div><div class="card scroll" style="padding:4px 8px"><table class="t"><thead><tr><th>Week</th><th>Order in</th><th>Delivered</th><th>On hand</th><th>Backlog</th><th>You ordered</th></tr></thead><tbody>' + rows.join('') + '</tbody></table></div></section>' +
+      '<div class="row"><button class="btn btn-quiet" data-act="beer-quit">Abandon this game</button></div><p class="note" id="beer-saved">' + esc(beer.statusText()) + '</p>' + foot() + '</main>';
+  }
+  function finishGame(g) {
+    const r = BG.game(g.seat, g.orders), st = BG.stats(r), mine = st.stages[g.seat].cost2, key = 'seat-' + g.seat, prev = beer.get(key);
+    beer.put(key, { ts: Date.now(), best2: prev ? Math.min(prev.best2, mine) : mine, last2: mine, plays: ((prev && prev.plays) || 0) + 1 });
+    beer.put('last', { ts: Date.now(), seat: g.seat, orders: g.orders.slice() });
+    beer.put('game', { ts: Date.now(), done: true });
+    VIEW = { debrief: true };
+  }
+  function renderDebrief(last) {
+    const s = last.seat, r = BG.game(s, last.orders), st = BG.stats(r);
+    const benchMine = BG.stats(BG.benchInSeat(s)).stages[s].cost2;
+    app.innerHTML = host.header('Debrief · ' + BG.SEATS[s], 'home', '', 'Back to start', '36 weeks') + '<main class="wrap" style="display:grid;gap:12px">' +
+      '<section class="card" style="display:grid;gap:10px"><div class="row">' + draftChip(BEER) + '<span class="k">The game ended after week 36</span></div><div class="stat" id="beer-score">' +
+      [['Your stage cost', money2(st.stages[s].cost2)], ['Team cost', money2(st.team2)], ['Benchmark team: all four on the benchmark rule', money2(BEER.refTeam2.bench)], ['Team if all four play like Sterman\'s average player', money2(BEER.refTeam2.average)],
+        ['Benchmark rule in your seat, same other players: team', money2(BEER.benchTeam2[s])], ['… and your stage', money2(benchMine)]]
+        .map(x => '<div><span class="v">' + esc(x[1]) + '</span><span class="l">' + esc(x[0]) + '</span></div>').join('') + '</div></section>' +
+      '<section class="card" style="display:grid;gap:10px"><h2 class="ttl" style="font-size:18px">Orders by week: the bullwhip</h2>' + chart(r, s) + '</section>' +
+      '<section class="card scroll" style="padding:4px 8px"><table class="t" id="beer-table"><thead><tr><th>Stage</th><th>Cost</th><th>Peak order</th><th>Week</th><th>Order ÷ demand variance</th></tr></thead><tbody>' +
+      st.stages.map((x, i) => '<tr><td>' + esc(BG.SEATS[i]) + (i === s ? ' (you)' : '') + '</td><td>' + money2(x.cost2) + '</td><td>' + x.peak + '</td><td>' + x.peakWeek + '</td><td>' + x.varRatio.toFixed(1) + '</td></tr>').join('') + '</tbody></table></section>' +
+      '<p class="note">Benchmark costs by stage with all four on the benchmark rule: ' + BEER.benchAll2.map((x, i) => esc(BG.SEATS[i]) + ' ' + money2(x)).join(', ') + '. The other three stages always play the rule Sterman fitted to his players, so the same orders from you give the same game.</p>' +
+      '<article class="card prose" style="display:grid;gap:10px"><h2 class="ttl" style="font-size:18px">Why it happens</h2>' + BEER.lesson.map(p => '<p>' + esc(p) + '</p>').join('') +
+      '<h3 class="k">Sources</h3><ul class="src">' + BEER.sources.map(x => '<li><a href="' + esc(x[1]) + '" target="_blank" rel="noopener">' + esc(x[0]) + '</a> <span class="lvchip">' + esc(x[2]) + '</span></li>').join('') + '</ul></article>' +
+      '<div class="row"><button class="btn btn-primary" data-act="beer-start" data-id="' + s + '">Play again as ' + esc(BG.SEATS[s]) + '</button><button class="btn" data-act="beer-new">Pick another stage</button></div>' + foot() + '</main>';
+  }
+  const qtyNow = () => { const el = document.getElementById('beer-qty'); const raw = el ? String(el.value).trim() : ''; const v = Number(raw); return raw !== '' && Number.isInteger(v) && v >= 0 && v <= 999 ? v : null; };
+  function placeOrder(q) {
+    const g = game(); if (!g) return;
+    if (q === null) return host.toast('Enter a whole number from 0 to 999.');
+    beer.put('game', { ts: Date.now(), seat: g.seat, orders: (g.orders || []).concat([q]) });
+    VIEW = {}; host.keepScroll();
+  }
+
   function foot() {
     const t = theme();
     return '<footer class="foot"><div class="row"><span>Theme:</span>' + ['system', 'light', 'dark'].map(x => '<button class="tog" data-act="theme" data-id="' + x + '" aria-pressed="' + (t === x) + '">' + x[0].toUpperCase() + x.slice(1) + '</button>').join('') + '</div>' +
-      '<p>Engines: study-kit ' + esc(BANK.kitVersion) + '. Claude grading and role-plays work when this page is open in Claude; everything else works without it.</p></footer>';
+      '<p>Engines: study-kit ' + esc(BANK.kitVersion) + '. Draft content has not been reviewed yet. Claude grading and role-plays work when this page is open in Claude; everything else works without it.</p></footer>';
   }
 
-  const SCREENS = Object.assign({ home: renderHome, lane: renderLane }, craft.screens, sims.screens);
+  const SCREENS = Object.assign({ home: renderHome, lane: renderLane, deck: renderDeck, lesson: renderLesson, practice: renderPractice, cards: renderCards, beer: renderBeer }, craft.screens, sims.screens);
   const ACT = Object.assign({
     home() { history.replaceState(null, '', location.pathname + location.search); host.go('home', {}); },
     lane(t) { const l = laneById(t.dataset.id); if (!l || !l.active) return; prefs.put('lane', { ts: Date.now(), v: l.id }); history.replaceState(null, '', '#lane-' + l.id); host.go('lane', { id: l.id }); },
-    theme(t) { try { localStorage.setItem(THEME_KEY, t.dataset.id); } catch (e) { /* storage unavailable */ } applyTheme(t.dataset.id); host.keepScroll(); }
+    deck(t) { history.replaceState(null, '', '#deck-' + t.dataset.id); host.go('deck', { id: t.dataset.id }); },
+    theme(t) { try { localStorage.setItem(THEME_KEY, t.dataset.id); } catch (e) { /* storage unavailable */ } applyTheme(t.dataset.id); host.keepScroll(); },
+    pick(t) { const q = QS[t.dataset.id]; if (!q || PICKS[q.id] !== undefined) return; const j = +t.dataset.j; PICKS[q.id] = j; saveAnswer(q.id, j === q.answer); host.keepScroll(); },
+    practice(t) { const d = deckById(t.dataset.id); history.replaceState(null, '', '#practice-' + d.id); host.go('practice', { deck: d.id, ids: practiceSet(d), i: 0, picks: {} }); },
+    ppick(t) { const q = QS[t.dataset.id]; if (!q || VIEW.picks[q.id] !== undefined) return; const j = +t.dataset.j; VIEW.picks[q.id] = j; saveAnswer(q.id, j === q.answer); host.keepScroll(); },
+    pnext() { VIEW.i = (VIEW.i || 0) + 1; host.render(); window.scrollTo(0, 0); },
+    'card-flip'() { VIEW.flip = true; host.keepScroll(); },
+    'card-skip'() { VIEW.flip = false; VIEW.i = ((VIEW.i || 0) + 1) % Math.max(1, cardList().length); host.keepScroll(); },
+    'card-mark'(t) { const list = cardList(), c = list[Math.min(VIEW.i || 0, list.length - 1)]; if (!c) return;
+      decks.put(c.id, { ts: Date.now(), mark: t.dataset.id }); VIEW.flip = false;
+      if (!(VIEW.again && t.dataset.id === 'got')) VIEW.i = (VIEW.i || 0) + 1;   // in "Again only", a card marked Got it leaves the list
+      if (VIEW.i >= cardList().length) VIEW.i = 0; host.keepScroll(); },
+    'cards-only'() { VIEW.again = !VIEW.again; VIEW.i = 0; VIEW.flip = false; host.keepScroll(); },
+    'beer-seat'(t) { VIEW.seat = +t.dataset.id; host.keepScroll(); },
+    'beer-start'(t) { beer.put('game', { ts: Date.now(), seat: +t.dataset.id, orders: [] }); host.go('beer', {}); },
+    'beer-new'() { host.go('beer', { seat: 1 }); },
+    'beer-debrief'() { host.go('beer', { debrief: true }); },
+    'beer-inc'() { const q = qtyNow(); VIEW.qty = Math.min(999, (q === null ? 0 : q) + 1); host.keepScroll(); },
+    'beer-dec'() { const q = qtyNow(); VIEW.qty = Math.max(0, (q === null ? 0 : q) - 1); host.keepScroll(); },
+    'beer-order'() { placeOrder(qtyNow()); },
+    'beer-same'() { const g = game(); placeOrder(g && g.orders && g.orders.length ? g.orders[g.orders.length - 1] : 4); },
+    'beer-quit'() { host.confirm('Abandon this game?', 'Your orders so far are discarded.', 'Abandon', () => { beer.put('game', { ts: Date.now(), done: true }); host.go('beer', {}); }); }
   }, craft.actions, sims.actions);
   function render() { (SCREENS[SCREEN] || renderHome)(); }
 
-  // Routes: dash form only (#lane-quality). Craft and Simulations route their own (#craft, #sims).
+  // Routes: dash form only. Craft and Simulations route their own (#craft, #sims).
   function route(h) {
-    const m = /^#lane-([a-z0-9-]+)$/.exec(h || '');
-    if (m) { const l = laneById(m[1]); if (l && l.active) { host.go('lane', { id: l.id }); return true; } host.go('home', {}); return true; }
+    let m;
+    if ((m = /^#lane-([a-z0-9-]+)$/.exec(h || ''))) { const l = laneById(m[1]); if (l && l.active) { host.go('lane', { id: l.id }); return true; } host.go('home', {}); return true; }
+    if ((m = /^#deck-([a-z0-9-]+)$/.exec(h || '')) && deckById(m[1])) { host.go('deck', { id: m[1] }); return true; }
+    if ((m = /^#cards-([a-z0-9-]+)$/.exec(h || '')) && deckById(m[1])) { host.go('cards', { id: m[1], i: 0 }); return true; }
+    if ((m = /^#practice-([a-z0-9-]+)$/.exec(h || '')) && deckById(m[1])) { const d = deckById(m[1]); host.go('practice', { deck: d.id, ids: practiceSet(d), i: 0, picks: {} }); return true; }
+    if ((m = /^#lesson-([a-z]+-\d+)$/.exec(h || '')) && LESSONS[m[1]]) { host.go('lesson', { id: m[1] }); return true; }
+    if (h === '#beer-game') { host.go('beer', {}); return true; }
     return craft.route(h) || sims.route(h);
   }
   document.addEventListener('click', e => { const t = e.target.closest('[data-act]'); if (!t || t.disabled) return; const fn = ACT[t.dataset.act]; if (fn) fn(t, e); });
-  document.addEventListener('input', e => { craft.onInput(e) || sims.onInput(e); });
+  document.addEventListener('input', e => { if (e.target && e.target.id === 'beer-qty') { VIEW.qty = e.target.value; return; } craft.onInput(e) || sims.onInput(e); });
+  document.addEventListener('keydown', e => { if (e.key === 'Enter' && e.target && e.target.id === 'beer-qty') { e.preventDefault(); placeOrder(qtyNow()); } });
   document.addEventListener('toggle', e => { craft.onToggle(e); }, true);
   window.addEventListener('pagehide', () => craft.onPageHide());
   window.addEventListener('hashchange', () => route(location.hash));
@@ -139,13 +360,13 @@ __KIT_CSS__
   (async () => {
     const C = window.claude;
     if (!C || typeof C.use !== 'function') return;
-    try { const fn = await C.use('sample'); if (typeof fn === 'function') { SAMPLE = fn; if (SCREEN !== 'home' && SCREEN !== 'lane') host.keepScroll(); } } catch (e) { /* not granted */ }
+    try { const fn = await C.use('sample'); if (typeof fn === 'function') { SAMPLE = fn; if (['craft', 'packet', 'stage', 'sims', 'run', 'rp'].indexOf(SCREEN) !== -1) host.keepScroll(); } } catch (e) { /* not granted */ }
     try {
       const db = await C.use('db'), user = await C.use('user'), uid = user && await user.id();
-      if (db && uid) { prefs.attach(db, uid); craft.attach(db, uid); sims.attach(db, uid); if (SCREEN === 'home') host.keepScroll(); }
+      if (db && uid) { prefs.attach(db, uid); decks.attach(db, uid); beer.attach(db, uid); craft.attach(db, uid); sims.attach(db, uid); if (SCREEN === 'home') host.keepScroll(); }
     } catch (e) { /* saved on this device only */ }
   })();
-  window.__tp = { craft, sims, prefs, host };
+  window.__tp = { craft, sims, prefs, decks, beer, host };
 })();
 </script>
 </body>

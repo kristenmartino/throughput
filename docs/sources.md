@@ -32,3 +32,8 @@ Total 100 scored. Cognitive levels follow Bloom's taxonomy, revised 2001 (Rememb
 **Delay structure** (Relayed): two weeks of order delay and two of shipping delay between stages, three weeks from production request to finished goods at the factory — Kaminsky and Simchi-Levi's computerized Beer Game description (Albany archive search text; not opened); the Temple MIS 3537 slides ("2 weeks order to ship, 2 weeks ship to delivery"; search text). The prototype reproduces Sterman's published benchmark exactly under this structure (Measured; see `docs/beer-game-rules.md`).
 
 **Other descriptions consistent with the above** (Relayed or Read as marked): arXiv 2202.12786 (Read): start 12 on hand, 4 in each shipping slot and order slot; costs $0.50 / $1.00; Sterman's mean parameters as above.
+
+## Lesson sources (opened Nov 24, 2026 for Phase 1; full list with tiers in `content/sources.js`)
+- Read: ASQ pages on SIPOC, benchmarking, voice of the customer, Kano model, QFD, the seven management and planning tools, cost of quality; NIST/SEMATECH e-Handbook pages on process capability, repeatability, linearity and the gallery of distributions; Lee, Padmanabhan and Whang (1997), Sloan Management Review (course copy).
+- Relayed (search text, not opened): Tuckman and Jensen (UF/IFAS summary); AIAG gauge R&R guideline (Minitab help); the 1.5-sigma shift (INFORMS Transactions on Education, 2015).
+- Not available: ASQ's team-stages page returned an error. NIST's reproducibility page does not define operator reproducibility, so that definition is tagged Inferred.
