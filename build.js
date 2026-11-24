@@ -14,7 +14,7 @@ const SRC = require('./content/sources.js');
 const errors = [];
 const laneIds = [], sectionIds = [], seen = new Set();
 const claim = (id, w) => { if (seen.has(id)) errors.push(w + ': duplicate id ' + id); seen.add(id); };
-// Link ids use the dash form only (#lane-quality, #lesson-df-1): study-kit v0.2.0's craft.route rejects dots.
+// Link ids use the dash form only (#lane-quality, #lesson-df-1): published links keep the dash form (study-kit accepts dots too since v0.2.1).
 const ID = /^[a-z0-9]+(-[a-z0-9]+)*$/;
 for (const ln of L.lanes) {
   if (!ID.test(ln.id)) errors.push('lane ' + ln.id + ': bad id');

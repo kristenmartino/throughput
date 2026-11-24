@@ -114,7 +114,7 @@ function ok(c, m) { if (c) pass++; else { fails.push(m); console.log('FAIL', m);
     ok(/Saved on this device/.test(await page.locator('#prefs-saved').textContent()), 'save line without Claude');
     // Engines load with role-play rules on (no content yet).
     ok(BANK.craft.length === 0 && BANK.runs.length === 0 && BANK.roleplays.length === 0, 'no Craft or Simulations content yet');
-    ok(/^v0\.2\.0$/.test(BANK.kitVersion), 'study-kit pinned to v0.2.0');
+    ok(/^v0\.2\.2$/.test(BANK.kitVersion), 'study-kit pinned to v0.2.2');
     await page.goto(URL + '#sims'); await page.waitForTimeout(150);
     ok(/Simulations/.test(await page.locator('.playtop .ttl').textContent()), '#sims opens the Simulations list');
     await ctx.close();
