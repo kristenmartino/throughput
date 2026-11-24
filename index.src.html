@@ -532,8 +532,10 @@ figure.lfig { margin: 0; display: grid; gap: 6px; }
 
   // ---- Bottleneck line (app-side engine, math/bottleneck.js; Phase 3)
   const usd = d => (d < 0 ? '−$' : '$') + Math.abs(d).toLocaleString('en-US');
-  const bnGame = () => { const v = bn.get('game'); return v && !v.done && Array.isArray(v.buys) ? JSON.parse(JSON.stringify(v)) : undefined; };
-  const bnMeta = () => { const g = bnGame(), b = bn.get('best'); return g ? 'In progress · round ' + (g.buys.length + 1) + ' of ' + BN.RULES.rounds : BN.RULES.rounds + ' rounds · ' + usd(BN.RULES.budget) + ' to spend' + (b ? ' · best ' + usd(b.profit) : ''); };
+  const BN_RV = 2, cur = v => v && v.rv === BN_RV ? v : undefined;  // runs saved under the first rules (capacity only, no variation) are set aside
+  const bnGame = () => { const v = cur(bn.get('game')); return v && !v.done && Array.isArray(v.buys) ? JSON.parse(JSON.stringify(v)) : undefined; };
+  const bnBuyText = b => { const d = BN.decode(b); return d ? BN.RULES.kinds[d.kind].label + (d.kind === 'buf' ? ' before ' : ' · ') + BN.RULES.names[d.s] : '—'; };
+  const bnMeta = () => { const g = bnGame(), b = cur(bn.get('best')); return g ? 'In progress · round ' + (g.buys.length + 1) + ' of ' + BN.RULES.rounds : BN.RULES.rounds + ' rounds · ' + usd(BN.RULES.budget) + ' to spend' + (b ? ' · best ' + usd(b.profit) : ''); };
   const relName = r => r === 'rope' ? 'Pace: release at the slowest station\'s rate' : 'Push: release at the first station\'s rate';
   function renderBn() {
     const g = bnGame();
@@ -542,8 +544,8 @@ figure.lfig { margin: 0; display: grid; gap: 6px; }
       if (r.waiting < 0) { bnFinish(g); return renderBn(); }
       return renderBnRound(g, r);
     }
-    if (VIEW.debrief && bn.get('last')) return renderBnDebrief(bn.get('last'));
-    const rel = VIEW.release || 'rope', last = bn.get('last');
+    if (VIEW.debrief && cur(bn.get('last'))) return renderBnDebrief(cur(bn.get('last')));
+    const rel = VIEW.release || 'rope', last = cur(bn.get('last'));
     app.innerHTML = host.header(BNK.title, 'lane', 'supply-chain', 'Back to the Supply chain lane', 'Draft') + '<main class="wrap" style="display:grid;gap:12px"><section class="card prose" style="display:grid;gap:10px"><div class="row">' + draftChip(BNK) + '<span class="lvchip">Operations · theory of constraints</span></div>' +
       BNK.briefing.map(p => '<p>' + esc(p) + '</p>').join('') + '</section>' +
       '<section class="card" style="display:grid;gap:10px"><h2 class="ttl" style="font-size:18px">How does work enter the line?</h2><div class="seats" role="radiogroup" aria-label="Release rule">' +
@@ -552,26 +554,33 @@ figure.lfig { margin: 0; display: grid; gap: 6px; }
       '<p class="note" id="bn-saved">' + esc(bn.statusText()) + '</p></section>' + foot() + '</main>';
   }
   function renderBnRound(g, r) {
-    const R = BN.RULES, t = r.waiting, n = r.h.out.length, caps = n ? r.h.caps[n - 1] : R.caps, q = n ? r.h.queues[n - 1] : R.caps.map(() => R.init);
-    const minCap = Math.min.apply(null, caps), st = BN.stats(r), left = R.budget - r.spent, canBuy = left >= R.stepCost;
+    const R = BN.RULES, K = R.kinds, t = r.waiting, n = r.h.out.length, caps = n ? r.h.caps[n - 1] : R.caps, q = n ? r.h.queues[n - 1] : R.caps.map(() => R.init);
+    const bufs = n ? r.h.bufs[n - 1] : [R.buf, R.buf, R.buf, R.buf], minCap = Math.min.apply(null, caps), st = BN.stats(r), left = R.budget - r.spent;
+    const used = g.buys.filter(b => b >= 0).length, more = used < R.maxBuys;
+    const pend = g.buys.map((b, k) => { const d = BN.decode(b); return d && d.kind === 'setup' && k + K.setup.delay >= t ? R.names[d.s] + ' from round ' + (k + K.setup.delay + 1) : null; }).filter(Boolean);
+    const btn = (code, label) => '<button class="tog" data-act="bn-buy" data-id="' + code + '"' + (more && BN.cost(code) <= left ? '' : ' disabled') + '>' + esc(label) + '</button>';
+    const group = (kind, title, note, codes) => '<div style="display:grid;gap:6px"><h3 class="k">' + esc(title) + ' · ' + usd(K[kind].cost) + '</h3><p class="note">' + esc(note) + '</p><div class="seats" role="group" aria-label="' + esc(title) + '">' + codes.map(c => btn(c[0], c[1])).join('') + '</div></div>';
     app.innerHTML = host.header(BNK.title, 'lane', 'supply-chain', 'Back to the Supply chain lane', 'Round ' + (t + 1) + ' of ' + R.rounds) + '<main class="wrap" style="display:grid;gap:12px">' +
       '<section class="card" style="display:grid;gap:10px" aria-live="polite"><div class="stat" id="bn-status">' +
-      [['Sold so far', st.out], ['In the line now', q.reduce((a, b) => a + b, 0)], ['Profit so far', usd(st.profit)], ['Left to spend', usd(left)], ['Lead time so far (Little\'s law)', n ? st.lead.toFixed(1) + ' rounds' : '—']]
-        .map(x => '<div><span class="v">' + esc(x[1]) + '</span><span class="l">' + esc(x[0]) + '</span></div>').join('') + '</div><p class="note">' + esc(relName(g.release)) + '.</p></section>' +
-      '<section class="card scroll" style="padding:4px 8px"><table class="t" id="bn-line"><thead><tr><th>Station</th><th>Capacity a round</th><th>Waiting in front</th></tr></thead><tbody>' +
-      R.names.map((nm, i) => '<tr' + (caps[i] === minCap ? ' class="bn-c"' : '') + '><td>' + esc(nm) + (caps[i] === minCap ? ' <span class="k">slowest</span>' : '') + '</td><td>' + caps[i] + '</td><td>' + q[i] + '</td></tr>').join('') + '</tbody></table></section>' +
-      '<section class="card" style="display:grid;gap:10px"><h2 class="ttl" style="font-size:18px">Round ' + (t + 1) + ': buy capacity?</h2><p class="note">Each purchase adds ' + R.step + ' a round to one station for ' + usd(R.stepCost) + ' and works from this round.</p>' +
-      '<div class="seats" role="group" aria-label="Buy capacity">' + R.names.map((nm, i) => '<button class="tog" data-act="bn-buy" data-id="' + i + '"' + (canBuy ? '' : ' disabled') + '>+' + R.step + ' ' + esc(nm) + '</button>').join('') + '</div>' +
-      '<div class="row"><button class="btn btn-primary" data-act="bn-buy" data-id="-1">No purchase, run the round</button></div>' + (canBuy ? '' : '<p class="note">Budget spent.</p>') + '</section>' +
-      (n ? '<section aria-labelledby="bnh-h"><div class="section-h"><h2 id="bnh-h">Rounds so far</h2></div><div class="card scroll" style="padding:4px 8px"><table class="t" id="bn-hist"><thead><tr><th>Round</th><th>Released</th><th>Sold</th><th>In line</th><th>Bought</th><th>Profit</th></tr></thead><tbody>' +
-        r.h.out.map((x, k) => '<tr><td>' + (k + 1) + '</td><td>' + r.h.release[k] + '</td><td>' + x + '</td><td>' + r.h.wip[k] + '</td><td>' + (g.buys[k] >= 0 ? esc(R.names[g.buys[k]]) : '—') + '</td><td>' + usd(r.h.profit[k]) + '</td></tr>').reverse().join('') + '</tbody></table></div></section>' : '') +
+      [['Sold so far', st.out], ['In the line now', q.reduce((a, b) => a + b, 0)], ['Profit so far', usd(st.profit)], ['Left to spend', usd(left)], ['Purchases left', R.maxBuys - used], ['Lead time so far (Little\'s law)', n ? st.lead.toFixed(1) + ' rounds' : '—']]
+        .map(x => '<div><span class="v">' + esc(x[1]) + '</span><span class="l">' + esc(x[0]) + '</span></div>').join('') + '</div><p class="note">' + esc(relName(g.release)) + '.' + (pend.length ? ' Setup reduction coming: ' + esc(pend.join(', ')) + '.' : '') + '</p></section>' +
+      '<section class="card scroll" style="padding:4px 8px"><table class="t" id="bn-line"><thead><tr><th>Station</th><th>Planned a round</th><th>Waiting</th><th>Space</th>' + (n ? '<th>Made last round</th>' : '') + '</tr></thead><tbody>' +
+      R.names.map((nm, i) => '<tr' + (caps[i] === minCap ? ' class="bn-c"' : '') + '><td>' + esc(nm) + (caps[i] === minCap ? ' <span class="k">slowest</span>' : '') + '</td><td>' + caps[i] + '</td><td>' + q[i] + '</td><td>' + (i ? bufs[i - 1] : 'no limit') + '</td>' + (n ? '<td>' + r.h.done[n - 1][i] + (r.h.blocked[n - 1][i] ? ' (blocked ' + r.h.blocked[n - 1][i] + ')' : '') + '</td>' : '') + '</tr>').join('') + '</tbody></table></section>' +
+      '<section class="card" style="display:grid;gap:12px"><h2 class="ttl" style="font-size:18px">Round ' + (t + 1) + ': buy something?</h2>' +
+      group('cap', 'Capacity', '+' + K.cap.add + ' a round at one station, from this round.', R.names.map((nm, i) => [i, '+' + K.cap.add + ' ' + nm])) +
+      group('setup', 'Setup reduction', '+' + K.setup.add + ' a round at one station, working from round ' + (t + 1 + K.setup.delay) + '.', R.names.map((nm, i) => [5 + i, '+' + K.setup.add + ' ' + nm])) +
+      group('over', 'Overtime', '+' + K.over.add + ' at one station, this round only.', R.names.map((nm, i) => [10 + i, '+' + K.over.add + ' ' + nm])) +
+      group('buf', 'Buffer space', '+' + K.buf.add + ' places in front of one station.', R.names.slice(1).map((nm, i) => [15 + i, '+' + K.buf.add + ' before ' + nm])) +
+      '<div class="row"><button class="btn btn-primary" data-act="bn-buy" data-id="-1">No purchase, run the round</button></div>' + (more ? '' : '<p class="note">All ' + R.maxBuys + ' purchases used.</p>') + '</section>' +
+      (n ? '<section aria-labelledby="bnh-h"><div class="section-h"><h2 id="bnh-h">Rounds so far</h2></div><div class="card scroll" style="padding:4px 8px"><table class="t" id="bn-hist"><thead><tr><th>Round</th><th>Released</th><th>Sold</th><th>In line</th><th>Blocked</th><th>Bought</th><th>Profit</th></tr></thead><tbody>' +
+        r.h.out.map((x, k) => '<tr><td>' + (k + 1) + '</td><td>' + r.h.release[k] + '</td><td>' + x + '</td><td>' + r.h.wip[k] + '</td><td>' + r.h.blocked[k].reduce((a, b) => a + b, 0) + '</td><td>' + esc(bnBuyText(g.buys[k])) + '</td><td>' + usd(r.h.profit[k]) + '</td></tr>').reverse().join('') + '</tbody></table></div></section>' : '') +
       '<div class="row"><button class="btn btn-quiet" data-act="bn-quit">Abandon this run</button></div><p class="note" id="bn-saved">' + esc(bn.statusText()) + '</p>' + foot() + '</main>';
   }
   function bnFinish(g) {
-    const st = BN.stats(BN.play(g)), b = bn.get('best');
-    bn.put('last', { ts: Date.now(), release: g.release, buys: g.buys.slice() });
-    if (!b || st.profit > b.profit) bn.put('best', { ts: Date.now(), profit: st.profit });
-    bn.put('game', { ts: Date.now(), done: true });
+    const st = BN.stats(BN.play(g)), b = cur(bn.get('best'));
+    bn.put('last', { ts: Date.now(), rv: BN_RV, release: g.release, buys: g.buys.slice() });
+    if (!b || st.profit > b.profit) bn.put('best', { ts: Date.now(), rv: BN_RV, profit: st.profit });
+    bn.put('game', { ts: Date.now(), rv: BN_RV, done: true });
     VIEW = { debrief: true };
   }
   function bnChart(r) {
@@ -584,9 +593,9 @@ figure.lfig { margin: 0; display: grid; gap: 6px; }
       '<div class="legend"><span><i style="background:var(--c1)"></i>Sold (throughput)</span><span><i style="background:var(--muted)"></i>In the line (WIP)</span></div>';
   }
   function renderBnDebrief(last) {
-    const R = BN.RULES, r = BN.play(last), st = BN.stats(r), ref = BNK.ref, best = bn.get('best');
+    const R = BN.RULES, r = BN.play(last), st = BN.stats(r), ref = BNK.ref, best = cur(bn.get('best'));
     const row = (name, s) => '<tr><td>' + name + '</td><td>' + usd(s.profit) + '</td><td>' + s.out + '</td><td>' + s.avgWip.toFixed(1) + '</td><td>' + s.lead.toFixed(1) + '</td></tr>';
-    const bought = last.buys.map((b, t) => b >= 0 ? R.names[b] + ' (round ' + (t + 1) + ')' : null).filter(Boolean);
+    const bought = last.buys.map((b, t) => b >= 0 ? bnBuyText(b) + ' (round ' + (t + 1) + ')' : null).filter(Boolean);
     app.innerHTML = host.header('Debrief · bottleneck line', 'lane', 'supply-chain', 'Back to the Supply chain lane', R.rounds + ' rounds') + '<main class="wrap" style="display:grid;gap:12px">' +
       '<section class="card" style="display:grid;gap:10px"><div class="row">' + draftChip(BNK) + '<span class="k">' + R.rounds + ' rounds played</span></div><div class="stat" id="bn-score">' +
       [['Your profit', usd(st.profit)], ['Units sold', st.out], ['Average in the line', st.avgWip.toFixed(1)], ['Lead time (Little\'s law)', st.lead.toFixed(1) + ' rounds'], ['Your best so far', best ? usd(best.profit) : '—']]
@@ -652,12 +661,12 @@ figure.lfig { margin: 0; display: grid; gap: 6px; }
     'inv-again'() { host.go('inv', {}); },
     'inv-quit'() { host.confirm('Abandon this game?', 'Your settings so far are discarded.', 'Abandon', () => { inv.put('game', { ts: Date.now(), done: true }); host.go('inv', {}); }); },
     'bn-rel'(t) { VIEW.release = t.dataset.id === 'push' ? 'push' : 'rope'; host.keepScroll(); },
-    'bn-start'() { bn.put('game', { ts: Date.now(), release: VIEW.release || 'rope', buys: [] }); VIEW = {}; host.go('bn', {}); },
-    'bn-buy'(t) { const g = bnGame(); if (!g) return; const b = +t.dataset.id, spent = g.buys.filter(x => x >= 0).length * BN.RULES.stepCost;
-      if (b >= 0 && spent + BN.RULES.stepCost > BN.RULES.budget) return host.toast('Budget spent.'); g.buys.push(b); g.ts = Date.now(); bn.put('game', g); host.keepScroll(); },
+    'bn-start'() { bn.put('game', { ts: Date.now(), rv: BN_RV, release: VIEW.release || 'rope', buys: [] }); VIEW = {}; host.go('bn', {}); },
+    'bn-buy'(t) { const g = bnGame(); if (!g) return; const b = +t.dataset.id, R = BN.RULES, spent = g.buys.reduce((a, x) => a + BN.cost(x), 0);
+      if (b >= 0 && (spent + BN.cost(b) > R.budget || g.buys.filter(x => x >= 0).length >= R.maxBuys)) return host.toast('Not enough budget or purchases left.'); g.buys.push(b); g.ts = Date.now(); bn.put('game', g); host.keepScroll(); },
     'bn-debrief'() { host.go('bn', { debrief: true }); },
     'bn-again'() { host.go('bn', {}); },
-    'bn-quit'() { host.confirm('Abandon this run?', 'Your choices so far are discarded.', 'Abandon', () => { bn.put('game', { ts: Date.now(), done: true }); host.go('bn', {}); }); },
+    'bn-quit'() { host.confirm('Abandon this run?', 'Your choices so far are discarded.', 'Abandon', () => { bn.put('game', { ts: Date.now(), rv: BN_RV, done: true }); host.go('bn', {}); }); },
     'beer-quit'() { host.confirm('Abandon this game?', 'Your orders so far are discarded.', 'Abandon', () => { beer.put('game', { ts: Date.now(), done: true }); host.go('beer', {}); }); }
   }, craft.actions, sims.actions);
   function render() { (SCREENS[SCREEN] || renderHome)(); }

@@ -8,7 +8,7 @@ const path = require('path');
 const NJ = require('./numbers.js'), BG = require('./beer.js'), IE = require('./inventory.js'), BN = require('./bottleneck.js');
 const INV = require('../data/inventory.json');
 
-function py(file, input) { return JSON.parse(execFileSync('python3', ['-I', path.join(__dirname, file)], { input: input || '', maxBuffer: 1 << 28 }).toString()); }
+function py(file, input, args) { return JSON.parse(execFileSync('python3', ['-I', path.join(__dirname, file)].concat(args || []), { input: input || '', maxBuffer: 1 << 28, timeout: 3600000 }).toString()); }
 
 function check(usedFormats) {
   const errs = []; let n = 0;
@@ -60,15 +60,25 @@ function check(usedFormats) {
   const hs = IE.hindsight(INV); if (JSON.stringify(hs) !== JSON.stringify(IP.hindsight)) errs.push('inventory hindsight best differs: ' + JSON.stringify(hs) + ' vs ' + JSON.stringify(IP.hindsight));
   // ---- bottleneck line: 400 seeded random plans (some paused, some over budget) plus named ones, and the exhaustive search
   const bp = [{ release: 'push', buys: Array(12).fill(-1) }, { release: 'rope', buys: Array(12).fill(-1) }];
-  for (let k = 0; k < 400; k++) { const len = k % 5 === 0 ? k % 12 : 12; bp.push({ release: k % 2 ? 'rope' : 'push', buys: Array.from({ length: len }, () => rnd() < 0.7 ? -1 : Math.floor(rnd() * 5)) }); }
-  const BP = py('bottleneck.py', JSON.stringify({ plans: bp }));
+  // Random plans use all four purchase kinds (codes 0-18) and sometimes break the budget or the three-purchase limit.
+  for (let k = 0; k < 400; k++) { const len = k % 5 === 0 ? k % 12 : 12; bp.push({ release: k % 2 ? 'rope' : 'push', buys: Array.from({ length: len }, () => rnd() < 0.75 ? -1 : Math.floor(rnd() * 19)) }); }
+  // The exhaustive search (about 3 million plays) is slow in Python, so its agreed result is cached in
+  // data/bottleneck-best.json under a hash of both engine files; it is rerun in both languages when either file changes.
+  const crypto = require('crypto'), fs = require('fs'), path = require('path'), cacheF = path.join(__dirname, '..', 'data', 'bottleneck-best.json');
+  const hash = crypto.createHash('sha256').update(fs.readFileSync(path.join(__dirname, 'bottleneck.js'))).update(fs.readFileSync(path.join(__dirname, 'bottleneck.py'))).digest('hex');
+  let cache = null; try { cache = JSON.parse(fs.readFileSync(cacheF, 'utf8')); } catch (e) { cache = null; }
+  const fresh = !(cache && cache.hash === hash);
+  const BP = py('bottleneck.py', JSON.stringify({ plans: bp }), fresh ? ['--best'] : []);
   bp.forEach((p, i) => { const a = BN.play(p), b2 = BP.plans[i];
     for (const k in a.h) { n += a.h[k].length; if (JSON.stringify(a.h[k]) !== JSON.stringify(b2.h[k])) errs.push('bottleneck plan ' + i + ' ' + k + ' differs'); }
     if (a.waiting !== b2.waiting || a.spent !== b2.spent) errs.push('bottleneck plan ' + i + ' pause or spend differs');
     if (a.waiting < 0) { const s = BN.stats(a), t = b2.stats; n += 6;
       for (const k of ['profit', 'out', 'spent', 'endWip']) if (s[k] !== t[k]) errs.push('bottleneck plan ' + i + ' ' + k + ': JS ' + s[k] + ' vs Python ' + t[k]);
       for (const k of ['avgWip', 'lead']) if (Math.abs(s[k] - t[k]) > 1e-12) errs.push('bottleneck plan ' + i + ' ' + k + ' differs'); } });
-  const bb = BN.best(); n++; if (JSON.stringify(bb) !== JSON.stringify(BP.best)) errs.push('bottleneck best plan differs: ' + JSON.stringify(bb) + ' vs ' + JSON.stringify(BP.best));
+  let bb;
+  if (fresh) { bb = BN.best(); n++; if (JSON.stringify(bb) !== JSON.stringify(BP.best)) errs.push('bottleneck best plan differs: ' + JSON.stringify(bb) + ' vs ' + JSON.stringify(BP.best));
+    else fs.writeFileSync(cacheF, JSON.stringify({ hash, best: bb, note: 'Exhaustive search, JS and Python agreed' }, null, 1) + '\n'); }
+  else { bb = cache.best; n++; const s = BN.stats(BN.play(bb)); if (s.profit !== bb.profit) errs.push('cached bottleneck best plan no longer replays to its profit'); }
   return { errs, n, beer: js, inventory: { textbook: IE.textbook(INV), hindsight: hs }, bottleneck: { best: bb } };
 }
 module.exports = { check };

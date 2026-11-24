@@ -173,21 +173,37 @@ claim(BEER.id, 'game');
 const BN = require('./math/bottleneck.js'), BNC = require('./content/bottleneck.js');
 claim(BNC.id, 'game');
 const bottleneck = (() => {
-  const R = BN.RULES, best = mc.bottleneck.best, none = Array(R.rounds).fill(-1), pad = a => a.concat(Array(R.rounds - a.length).fill(-1));
+  const R = BN.RULES, K = R.kinds, best = mc.bottleneck.best, none = Array(R.rounds).fill(-1);
+  const at = (t, b) => { const x = none.slice(); x[t] = b; return x; };
   const run = p => BN.stats(BN.play(p)), push = run({ release: 'push', buys: none }), rope = run({ release: 'rope', buys: none });
-  const minCap = Math.min.apply(null, R.caps), c0 = R.caps.indexOf(minCap), after = R.caps.slice(); after[c0] += R.step;
-  const c1cap = Math.min.apply(null, after), c1 = after.indexOf(c1cap), waste = 0, wasted = run({ release: 'rope', buys: pad([waste, waste, waste]) });
+  const minCap = Math.min.apply(null, R.caps), c0 = R.caps.indexOf(minCap), waste = 0;
+  const wasted = run({ release: 'rope', buys: [waste, waste, waste].concat(none.slice(3)) });
+  const bufBuy = 14 + c0, pushBuf = run({ release: 'push', buys: at(0, bufBuy) });
+  const capA = run({ release: 'rope', buys: at(0, c0) }), setupA = run({ release: 'rope', buys: at(0, 5 + c0) }), overA1 = run({ release: 'rope', buys: at(0, 10 + c0) });
+  const afterSetup = R.caps.slice(); afterSetup[c0] += K.setup.add; const c1cap = Math.min.apply(null, afterSetup), c1 = afterSetup.indexOf(c1cap);
+  let bestOver = null; for (const release of ['rope', 'push']) for (let t = 0; t < R.rounds; t++) for (let s = 0; s < 5; s++) { const st = run({ release, buys: at(t, 10 + s) }); if (!bestOver || st.profit > bestOver.profit) bestOver = { release, t, s, profit: st.profit }; }
+  const idle = rel => { const h = BN.play({ release: rel, buys: none }).h; return h.done.reduce((a, d, t) => a + h.rate[t][c0] - d[c0] - h.blocked[t][c0], 0); }, ropeIdle = idle('rope'), pushIdle = idle('push');
+  if (!(pushIdle < ropeIdle) || ropeIdle - pushIdle !== push.out - rope.out) errors.push('bottleneck lesson 2: push should sell more only because the constraint idles less');
+  if (!(bestOver.profit < Math.max(rope.profit, push.profit))) errors.push('bottleneck lesson 6: no single overtime purchase should pay');
   const usd = d => (d < 0 ? '−$' : '$') + Math.abs(d).toLocaleString('en-US');
-  const planText = p => (p.release === 'rope' ? 'release at the constraint\'s pace' : 'push') + (p.buys.some(b => b >= 0) ? ', then buy ' + p.buys.map((b, t) => b >= 0 ? R.names[b] + ' in round ' + (t + 1) : null).filter(Boolean).join(', ') : ', and buy nothing');
-  if (push.out !== rope.out) errors.push('bottleneck lesson: push and pacing should sell the same with no purchases');
-  if (!(push.profit < rope.profit) || !(push.endWip > rope.endWip)) errors.push('bottleneck lesson: push should end with more WIP and less profit');
-  if (wasted.out !== rope.out || wasted.profit !== rope.profit - 3 * R.stepCost || waste === c0) errors.push('bottleneck lesson: steps at a non-constraint should change nothing but cost');
-  if (best.release !== 'rope' || !best.buys.some(b => b === c0)) errors.push('bottleneck lesson: the best plan should pace release and elevate the constraint');
-  const V = { rounds: R.rounds, budget: usd(R.budget), stations: R.names.join(', '), init: R.init, caps: R.names.map((nm, i) => nm + ' ' + R.caps[i]).join(', '),
-    margin: usd(R.margin), wipCost: usd(R.wipCost), step: R.step, stepCost: usd(R.stepCost), cap0: R.caps[0], maxBuys: Math.floor(R.budget / R.stepCost),
-    c0name: R.names[c0], c0cap: minCap, c0after: after[c0], c1name: R.names[c1], c1cap: c1cap, c4name: R.names[waste],
-    pushOut: push.out, pushEndWip: push.endWip, ropeEndWip: rope.endWip, pushProfit: usd(push.profit), ropeProfit: usd(rope.profit),
-    ropeWip: rope.avgWip.toFixed(1), ropeLead: rope.lead.toFixed(1), pushLead: push.lead.toFixed(1), wasted: usd(rope.profit - wasted.profit),
+  const buyText = (b, t) => { const d = BN.decode(b); return K[d.kind].label.toLowerCase() + (d.kind === 'buf' ? ' in front of ' : ' at ') + R.names[d.s] + ' in round ' + (t + 1); };
+  const planText = p => (p.release === 'rope' ? 'pace release to the constraint' : 'push') + (p.buys.some(b => b >= 0) ? ', then buy ' + p.buys.map((b, t) => b >= 0 ? buyText(b, t) : null).filter(Boolean).join(', ') : ', and buy nothing');
+  // Each lesson claim, asserted from the engine.
+  if (!(push.out >= rope.out) || !(push.profit < rope.profit) || !(push.endWip > rope.endWip) || !(push.blocked > 0) || rope.blocked !== 0) errors.push('bottleneck lesson 2: push should sell at least as much, block, and end with more WIP and less profit');
+  if (wasted.out !== rope.out || wasted.profit !== rope.profit - 3 * K.cap.cost || waste === c0) errors.push('bottleneck lesson 4: capacity at a non-constraint should change nothing but cost');
+  if (pushBuf.out !== push.out || !(pushBuf.blocked < push.blocked) || pushBuf.profit !== push.profit - K.buf.cost) errors.push('bottleneck lesson 4: buffer space under push should cut blocking but not sales');
+  if (capA.out !== setupA.out || !(setupA.profit > capA.profit) || !(c1cap < R.caps[c0] + K.cap.add) || !(c1cap <= R.caps[c0] + K.setup.add)) errors.push('bottleneck lesson 5: setup reduction at the constraint should match capacity on sales and beat it on profit');
+  if (!(overA1.profit < rope.profit) || overA1.out !== rope.out) errors.push('bottleneck lesson 6: overtime at the constraint in round 1 should not pay');
+  if (best.release !== 'rope' || !best.buys.some(b => b >= 0 && BN.decode(b).s === c0)) errors.push('bottleneck lesson 7: the best plan should pace release and elevate the constraint');
+  const V = { rounds: R.rounds, budget: usd(R.budget), stations: R.names.join(', '), init: R.init, buf: R.buf, caps: R.names.map((nm, i) => nm + ' ' + R.caps[i]).join(', '),
+    margin: usd(R.margin), wipCost: usd(R.wipCost), cap0: R.caps[0], maxBuys: R.maxBuys,
+    capAdd: K.cap.add, capCost: usd(K.cap.cost), setupAdd: K.setup.add, setupCost: usd(K.setup.cost), setupDelay: K.setup.delay, setupRound: 1 + K.setup.delay,
+    overAdd: K.over.add, overCost: usd(K.over.cost), bufAdd: K.buf.add, bufCost: usd(K.buf.cost),
+    c0name: R.names[c0], c0cap: minCap, c1name: R.names[c1], c1cap, wasteName: R.names[waste], bufBuyName: 'buffer space',
+    pushOut: push.out, ropeOut: rope.out, ropeIdle, pushIdle, pushEndWip: push.endWip, ropeEndWip: rope.endWip, pushBlocked: push.blocked, pushBufBlocked: pushBuf.blocked,
+    pushProfit: usd(push.profit), ropeProfit: usd(rope.profit), ropeWip: rope.avgWip.toFixed(1), ropeLead: rope.lead.toFixed(1), pushLead: push.lead.toFixed(1),
+    wasted: usd(rope.profit - wasted.profit), capAProfit: usd(capA.profit), setupAProfit: usd(setupA.profit), capAOut: capA.out, overA1Profit: usd(overA1.profit),
+    bestOverText: (bestOver.release === 'rope' ? 'with pacing, ' : 'with push, ') + 'overtime at ' + R.names[bestOver.s] + ' in round ' + (bestOver.t + 1), bestOverProfit: usd(bestOver.profit),
     searched: best.searched.toLocaleString('en-US'), bestPlan: planText(best), bestProfit: usd(best.profit) };
   const f = (t, w) => t.replace(/\{([A-Za-z0-9]+)\}/g, (m, k) => { if (!(k in V)) { errors.push('bottleneck ' + w + ': unknown {' + k + '}'); return m; } return String(V[k]); });
   BNC.lesson.forEach((p, i) => { if (!/\((Read|Relayed|Inferred|Measured|Computed)/.test(p)) errors.push('bottleneck lesson ' + (i + 1) + ': needs a tier tag'); });
