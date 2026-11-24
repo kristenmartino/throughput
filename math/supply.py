@@ -108,4 +108,11 @@ def compute_supply():
     o['underrun'] = 10000; o['sellerGain'] = 0.2 * 10000; o['fee'] = 10000 + o['sellerGain']; o['priceInc'] = 90000 + o['fee']
     o['feeWrong'] = 10000 + 0.8 * 10000; o['buyerSave'] = 110000 - o['priceInc']
     out.update({f'sc3.{k}': float(v) for k, v in o.items()})
+    # ---- sc7
+    o = dict(pFire=0.05, iFire=2000000, pStrike=0.20, iStrike=300000, pRecall=0.02, iRecall=4000000)
+    o['eFire'] = 0.05 * 2000000; o['eStrike'] = 0.20 * 300000; o['eRecall'] = 0.02 * 4000000
+    o['eTotal'] = o['eFire'] + o['eStrike'] + o['eRecall']
+    o.update(dualCost=40000, dualCut=0.75); o['eFireAfter'] = 0.05 * 2000000 * 0.25; o['dualSave'] = o['eFire'] - o['eFireAfter']; o['dualNet'] = o['dualSave'] - 40000
+    o.update(ttr=6, tts=4, weekRev=500000); o['ttGap'] = 2; o['revRisk'] = 2 * 500000; o['revRiskWrong'] = 6 * 500000
+    out.update({f'sc7.{k}': float(v) for k, v in o.items()})
     return out

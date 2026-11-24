@@ -103,6 +103,16 @@ function computeSupply() {
     o.feeWrong = o.tgtFee + o.shareBuyer * o.underrun; o.buyerSave = o.tgtCost + o.tgtFee - o.priceInc;
     S.sc3 = o;
   }
+  // ---- sc7: risk
+  {
+    const o = {};
+    o.pFire = 0.05; o.iFire = 2000000; o.pStrike = 0.20; o.iStrike = 300000; o.pRecall = 0.02; o.iRecall = 4000000;
+    o.eFire = o.pFire * o.iFire; o.eStrike = o.pStrike * o.iStrike; o.eRecall = o.pRecall * o.iRecall;
+    o.eTotal = o.eFire + o.eStrike + o.eRecall;
+    o.dualCost = 40000; o.dualCut = 0.75; o.eFireAfter = o.pFire * o.iFire * (1 - o.dualCut); o.dualSave = o.eFire - o.eFireAfter; o.dualNet = o.dualSave - o.dualCost;
+    o.ttr = 6; o.tts = 4; o.ttGap = o.ttr - o.tts; o.weekRev = 500000; o.revRisk = o.ttGap * o.weekRev; o.revRiskWrong = o.ttr * o.weekRev;
+    S.sc7 = o;
+  }
   return S;
 }
 module.exports = { computeSupply };
