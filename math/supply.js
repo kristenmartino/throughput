@@ -43,6 +43,35 @@ function computeSupply() {
     o.wkCogs = 4800000 / 52; o.wos = 800000 / o.wkCogs;
     S.sc4 = o;
   }
+  // ---- sc1: demand and forecasting
+  {
+    const o = {}, dm = [120, 132, 125, 140, 138, 150];
+    dm.forEach((x, i) => { o['m' + (i + 1)] = x; });
+    o.ma3 = (dm[3] + dm[4] + dm[5]) / 3; o.ma6 = sum(dm) / 6; o.wma = 0.5 * dm[5] + 0.3 * dm[4] + 0.2 * dm[3]; o.wmaRev = 0.2 * dm[5] + 0.3 * dm[4] + 0.5 * dm[3];
+    o.f6 = 135; o.alpha = 0.3; o.es7 = o.f6 + 0.3 * (dm[5] - o.f6); o.esWrong = dm[5] + 0.3 * (o.f6 - dm[5]); o.es7a8 = o.f6 + 0.8 * (dm[5] - o.f6);
+    const A = [100, 110, 95, 120], F = [105, 100, 100, 110], e = A.map((x, i) => x - F[i]);
+    A.forEach((x, i) => { o['a' + (i + 1)] = x; o['f' + (i + 1)] = F[i]; o['e' + (i + 1)] = e[i]; });
+    o.sumE = sum(e); o.mad = sum(e.map(Math.abs)) / 4; o.bias = o.sumE / 4; o.ts = o.sumE / o.mad;
+    o.mape = sum(e.map((x, i) => Math.abs(x) / A[i])) / 4; o.madSigned = Math.abs(o.sumE) / 4;
+    o.mse = sum(e.map(x => x * x)) / 4;
+    // seasonal index: quarterly averages over three years
+    const qAvg = [80, 95, 105, 120], over = sum(qAvg) / 4; o.q4avg = qAvg[3]; o.qOver = over; o.si4 = qAvg[3] / over; o.si1 = qAvg[0] / over;
+    o.annual = 480; o.q4fc = o.annual / 4 * o.si4; o.q4fcFlat = o.annual / 4; o.q4fcWrong = o.annual * o.si4; o.q4fcQ1 = o.annual / 4 * o.si1;
+    S.sc1 = o;
+  }
+  // ---- sc5: logistics
+  {
+    const o = {};
+    o.shipLb = 5000; o.nShip = 4; o.ltlRate = 18; o.ftl = 1800;   // LTL $ per hundredweight (cwt = 100 lb)
+    o.ltlEach = o.shipLb / 100 * o.ltlRate; o.ltlAll = o.nShip * o.ltlEach; o.consSave = o.ltlAll - o.ftl; o.breakLb = o.ftl / o.ltlRate * 100;
+    o.ltlWrongLb = o.nShip * o.shipLb * o.ltlRate;   // forgetting cwt
+    o.unitVal = 200; o.carry = 0.25; o.daysSaved = 10; o.airPrem = 5;
+    o.holdDay = o.unitVal * o.carry / 365; o.pipeSave = o.holdDay * o.daysSaved; o.airNet = o.airPrem - o.pipeSave;
+    o.pipeWrongYr = o.unitVal * o.carry * o.daysSaved;   // forgetting to divide by 365
+    o.dcUnits = 1200; o.dcDays = 14; o.pipeUnits = 300 * 14;   // pipeline stock = daily flow × transit days
+    o.flow = 300; o.transit = 14; o.pipe = o.flow * o.transit; o.transitAir = 3; o.pipeAir = o.flow * o.transitAir; o.pipeCut = o.pipe - o.pipeAir;
+    S.sc5 = o;
+  }
   return S;
 }
 module.exports = { computeSupply };

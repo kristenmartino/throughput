@@ -74,5 +74,11 @@ module.exports = {
   ratedCap: ['Rated capacity = available time × utilization × efficiency (APICS dictionary wording, via CPIM study notes)', 'https://open-exam-prep.com/study-guides/cpim/detailed-schedules/capacity-types-safety-capacity-labor', 'Relayed (search text)'],
   abcStev: ['Stevenson, Operations Management (11th ed.), the A-B-C approach (excerpt)', 'https://www.scribd.com/document/467769305/lectura-ABC-ingles', 'Relayed (search text)'],
   ltVar: ['Bricker, University of Iowa: Reorder point (lead-time demand with variable lead time)', 'https://user.engineering.uiowa.edu/~dbricker/Lecture_Slides/Reorder_Point.pdf', 'Relayed (search text)'],
+  nistEs: ['NIST/SEMATECH e-Handbook 6.4.3.1: Single exponential smoothing', 'https://www.itl.nist.gov/div898/handbook/pmc/section4/pmc431.htm', 'Read'],
+  fisher: ['Fisher (1997), What Is the Right Supply Chain for Your Product?, Harvard Business Review', 'https://eclass.upatras.gr/modules/document/file.php/MECH1277/%CE%95%CE%A1%CE%93%CE%91%CE%A3%CE%99%CE%95%CE%A3-PAPERS%20%CE%91%CE%9D%CE%9F%CE%99%CE%9E%CE%97%202024/2-Right%20Supply%20Chain%20B.pdf', 'Relayed (search text)'],
+  ncsuFc: ['NC State SCM Initiative: Measuring forecast accuracy (MFE, MAD, tracking signal)', 'https://scm.ncsu.edu/scm-articles/article/measuring-forecast-accuracy-approaches-to-forecasting-a-tutorial', 'Relayed (search text)'],
+  icc: ['ICC: Incoterms rules (eleven three-letter trade terms; Incoterms 2020 in force from 1 January 2020)', 'https://iccwbo.org/business-solutions/incoterms-rules/', 'Read'],
+  incoList: ['CSO Ireland: Incoterms 2020 guidebook (seven any-mode rules, four sea rules; DPU replaces DAT)', 'https://www.cso.ie/en/methods/prices/importpriceindexsurvey/incotermsguidebook/', 'Relayed (search text)'],
+  dhlInco: ['DHL: Incoterms 2020 rules and changes from 2010 (CIP insurance at ICC A)', 'https://www.dhl.com/gb-en/home/our-divisions/global-forwarding/help-and-support/incoterms-2020.html', 'Relayed (search text)'],
   willems: ['Willems (2001), Inventory Basics (from S. C. Graves\'s notes), MIT 15.762J materials', 'https://dspace.mit.edu/bitstream/handle/1721.1/71720/15-762j-spring-2005/contents/lecture-notes/inventory_notes.pdf', 'Read']
 };

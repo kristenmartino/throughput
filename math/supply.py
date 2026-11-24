@@ -51,4 +51,32 @@ def compute_supply():
     # z values must match the normal distribution to the 3 decimals used
     assert abs(NormalDist().inv_cdf(0.95) - 1.645) < 0.0005 and abs(NormalDist().inv_cdf(0.99) - 2.326) < 0.0005
     out.update({f'sc4.{k}': float(v) for k, v in o.items()})
+    # ---- sc1 (forecasting by explicit loops; seasonal index by ratio to the mean)
+    o = {}; dm = [120, 132, 125, 140, 138, 150]
+    for i, x in enumerate(dm): o[f'm{i + 1}'] = x
+    o['ma3'] = sum(dm[-3:]) / 3; o['ma6'] = sum(dm) / len(dm)
+    w = [0.2, 0.3, 0.5]; o['wma'] = sum(a * b for a, b in zip(w, dm[-3:])); o['wmaRev'] = sum(a * b for a, b in zip(w[::-1], dm[-3:]))
+    o['f6'] = 135; o['alpha'] = 0.3
+    o['es7'] = 0.3 * dm[5] + 0.7 * 135                       # alpha*actual + (1-alpha)*previous forecast
+    o['esWrong'] = 0.3 * 135 + 0.7 * dm[5]; o['es7a8'] = 0.8 * dm[5] + 0.2 * 135
+    A = [100, 110, 95, 120]; F = [105, 100, 100, 110]
+    for i in range(4): o[f'a{i + 1}'] = A[i]; o[f'f{i + 1}'] = F[i]; o[f'e{i + 1}'] = A[i] - F[i]
+    errs = [a - f for a, f in zip(A, F)]
+    o['sumE'] = sum(errs); o['mad'] = sum(abs(x) for x in errs) / len(errs); o['bias'] = sum(errs) / len(errs)
+    o['ts'] = sum(errs) / o['mad']; o['mape'] = sum(abs(x) / a for x, a in zip(errs, A)) / len(A); o['madSigned'] = abs(sum(errs)) / 4
+    o['mse'] = sum(x * x for x in errs) / 4
+    qa = [80, 95, 105, 120]; mean = sum(qa) / 4
+    o['q4avg'] = qa[3]; o['qOver'] = mean; o['si4'] = qa[3] / mean; o['si1'] = qa[0] / mean
+    o['annual'] = 480; o['q4fc'] = 480 / 4 * o['si4']; o['q4fcFlat'] = 480 / 4; o['q4fcWrong'] = 480 * o['si4']; o['q4fcQ1'] = 480 / 4 * o['si1']
+    out.update({f'sc1.{k}': float(v) for k, v in o.items()})
+    # ---- sc5
+    o = {}
+    o['shipLb'] = 5000; o['nShip'] = 4; o['ltlRate'] = 18; o['ftl'] = 1800
+    cwt = 5000 / 100; o['ltlEach'] = cwt * 18; o['ltlAll'] = 4 * cwt * 18; o['consSave'] = o['ltlAll'] - 1800
+    o['breakLb'] = 1800 * 100 / 18; o['ltlWrongLb'] = 4 * 5000 * 18
+    o['unitVal'] = 200; o['carry'] = 0.25; o['daysSaved'] = 10; o['airPrem'] = 5
+    o['holdDay'] = 200 * 0.25 / 365; o['pipeSave'] = 10 * 200 * 0.25 / 365; o['airNet'] = 5 - o['pipeSave']; o['pipeWrongYr'] = 200 * 0.25 * 10
+    o['dcUnits'] = 1200; o['dcDays'] = 14; o['pipeUnits'] = 4200
+    o['flow'] = 300; o['transit'] = 14; o['pipe'] = 300 * 14; o['transitAir'] = 3; o['pipeAir'] = 900; o['pipeCut'] = 4200 - 900
+    out.update({f'sc5.{k}': float(v) for k, v in o.items()})
     return out
