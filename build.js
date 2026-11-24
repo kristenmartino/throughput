@@ -70,7 +70,7 @@ const DECKS = ['overview', 'define', 'measure', 'analyze', 'improve', 'control']
     for (let j = 0; j < 4; j++) { if (j !== q.answer && !(q.whyNot && q.whyNot[j])) errors.push(qw + ': option ' + j + ' needs a whyNot'); }
     if (q.whyNot && q.whyNot[q.answer]) errors.push(qw + ': the answer has a whyNot');
     pos[q.answer]++;
-    const out = { id: q.id, lesson: q.lesson, bok: q.bok, level: q.level, status: q.status === undefined ? 'Draft' : q.status, stem: fill(q.stem, qw), options: q.options.map(x => fill(x, qw)), answer: q.answer, why: fill(q.why, qw), whyNot: {} };
+    const out = { id: q.id, mock: q.mock !== false, lesson: q.lesson, bok: q.bok, level: q.level, status: q.status === undefined ? 'Draft' : q.status, stem: fill(q.stem, qw), options: q.options.map(x => fill(x, qw)), answer: q.answer, why: fill(q.why, qw), whyNot: {} };
     for (const j in q.whyNot) out.whyNot[j] = fill(q.whyNot[j], qw);
     if (new Set(out.options).size !== 4) errors.push(qw + ': two options print the same text: ' + out.options.join(' | '));
     return out;
@@ -92,13 +92,14 @@ for (const dk of DECKS) for (const t of [].concat(...dk.lessons.map(l => l.body.
 // ---- Timed mock (route #mock; option A approved Nov 24): 110 questions drawn from the deck bank by section.
 // ASQ: 100 scored + 10 unscored, 4 h 18 min (Read). Scored split 11/20/20/18/16/15 (Read, BoK). ASQ does not say how the
 // 10 unscored items are spread, so they are drawn in the same ratio (largest remainder) and every item is scored (Inferred).
+// Questions marked mock: false refer to a lesson's chart or table and are left out of the draw.
 const MOCK = (() => {
   const secs = (L.sections.quality || []).filter(x => x.kind === 'Deck'), total = 110, scored = 100;
   const extra = secs.map(x => x.questions * (total - scored) / scored), base = extra.map(Math.floor);
   let left = (total - scored) - base.reduce((a, b) => a + b, 0);
   extra.map((v, i) => [v - base[i], i]).sort((a, b) => b[0] - a[0] || a[1] - b[1]).forEach(([, i]) => { if (left > 0) { base[i]++; left--; } });
   const draw = {}; secs.forEach((x, i) => { draw[x.id] = x.questions + base[i]; });
-  for (const id in draw) { const d = DECKS.find(k => k.id === id); if (!d) errors.push('mock: deck ' + id + ' missing'); else if (d.questions.length < draw[id]) errors.push('mock: deck ' + id + ' has ' + d.questions.length + ' questions, mock draws ' + draw[id]); }
+  for (const id in draw) { const d = DECKS.find(k => k.id === id); if (!d) errors.push('mock: deck ' + id + ' missing'); else if (d.questions.filter(q => q.mock).length < draw[id]) errors.push('mock: deck ' + id + ' has ' + d.questions.filter(q => q.mock).length + ' questions that stand alone, mock draws ' + draw[id]); }
   if (Object.values(draw).reduce((a, b) => a + b, 0) !== total) errors.push('mock: draw does not total 110');
   return { id: 'mock', title: 'Timed mock', status: 'Draft', minutes: 4 * 60 + 18, total, draw, order: secs.map(x => x.id),
     scoring: 'ASQ reports a scaled score and certifies at 550 of a possible 750. The raw number of correct answers needed is set for each exam form by a Modified Angoff cut-score study and is not published, so this mock shows percent right by section and no pass line.',

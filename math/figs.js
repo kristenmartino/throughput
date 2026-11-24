@@ -70,7 +70,7 @@ function xbar(N) {
     body += line(L, fr.y(v), W - R, fr.y(v), i === 1 ? 'var(--muted)' : 'var(--c2)', 1.5, i === 1 ? '' : '5 3') + txt(L - 4, fr.y(v) + 3, s.split(' ')[1], 'end');
   });
   body += poly(xs.map((v, i) => [fr.x(i + 1), fr.y(v)]), 'var(--c1)', 1.8);
-  xs.forEach((v, i) => { const inRun = i + 1 >= N.co1.runFrom && i + 1 <= N.co1.runTo; body += dot(fr.x(i + 1), fr.y(v), inRun ? 'var(--c3)' : 'var(--c1)', inRun ? 3.6 : 2.8); });
+  xs.forEach((v, i) => { const inRun = i + 1 >= N.co1.runFrom && i + 1 <= N.co1.runTo; body += dot(fr.x(i + 1), fr.y(v), inRun ? 'var(--c3)' : 'var(--c1)', inRun ? 5 : 3.4); });
   [1, 5, 10, 15, 20].forEach(t => { body += txt(fr.x(t), H - 10, t); });
   return { svg: svg('X-bar chart of 20 subgroup means with UCL ' + f(c.uclX, 2) + ', center ' + f(c.xbb, 2) + ' and LCL ' + f(c.lclX, 2) + '. No point is outside the limits; subgroups ' + N.co1.runFrom + ' to ' + N.co1.runTo + ' are all above the center line.', body),
     legend: [['--c1', 'Subgroup mean'], ['--c3', 'Run above the center line'], ['--c2', 'Control limits']] };

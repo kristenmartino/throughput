@@ -56,6 +56,15 @@ table.t th { font-weight: 600; color: var(--muted); font-size: 13px; }
 .seats { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 8px; }
 .seats .tog { white-space: normal; text-align: left; }
 .foot { color: var(--muted); font-size: 13px; display: grid; gap: 6px; }
+figure.lfig { margin: 0; display: grid; gap: 6px; }
+.timer { font-family: var(--f-mono); font-variant-numeric: tabular-nums; font-weight: 700; }
+.timer.low { color: var(--warn); }
+.mgrid { display: grid; grid-template-columns: repeat(auto-fill, minmax(44px, 1fr)); gap: 6px; }
+.mgrid button { min-height: 44px; border: 1px solid var(--rule); border-radius: 8px; background: var(--sheet); color: var(--ink); font-family: var(--f-mono); font-size: 13px; cursor: pointer; padding: 0; }
+.mgrid button.ans { background: var(--sunk); }
+.mgrid button.flg { border: 2px solid var(--warn); }
+.mgrid button.cur { outline: 2px solid var(--marker); outline-offset: 1px; }
+.opt.is-picked { border-color: var(--marker); box-shadow: inset 0 0 0 2px var(--marker); }
 </style>
 </head>
 <body>
@@ -79,14 +88,18 @@ table.t th { font-weight: 600; color: var(--muted); font-size: 13px; }
   const money2 = h => '$' + (h / 2).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 });   // half-dollars to dollars
 
   // ---- stores (study-kit's save helper): prefs, deck progress, Beer Game
-  const status = () => { for (const [id, s] of [['prefs-saved', prefs], ['deck-saved', decks], ['beer-saved', beer]]) { const el = document.getElementById(id); if (el && s) el.textContent = s.statusText(); } };
+  const status = () => { for (const [id, s] of [['prefs-saved', prefs], ['deck-saved', decks], ['beer-saved', beer], ['mock-saved', mock]]) { const el = document.getElementById(id); if (el && s) el.textContent = s.statusText(); } };
   const keep = ok => x => { const o = {}; if (!x || typeof x !== 'object') return o; for (const k in x) if (ok(k) && x[k] && typeof x[k] === 'object' && typeof x[k].ts === 'number') o[k] = JSON.parse(JSON.stringify(x[k])); return o; };
   const prefs = K.save.createStore({ localKey: APP + ':prefs:v1', doc: 'prefs', field: 'prefs', normalize: keep(k => k === 'lane'), onRemote() { if (SCREEN === 'home') host.keepScroll(); }, onStatus: () => status() });
   const decks = K.save.createStore({ localKey: APP + ':decks:v1', doc: 'decks', field: 'decks', normalize: keep(k => !!(QS[k] || CARDS[k])),
     onRemote() { if (['deck', 'lesson', 'lane', 'cards'].indexOf(SCREEN) !== -1) host.keepScroll(); }, onStatus: () => status() });
   const beer = K.save.createStore({ localKey: APP + ':beer:v1', doc: 'beer', field: 'beer', normalize: keep(k => /^(game|last|seat-[0-3])$/.test(k)),
     onRemote() { if (SCREEN === 'beer' || SCREEN === 'home') host.keepScroll(); }, onStatus: () => status() });
-  prefs.loadLocal(); decks.loadLocal(); beer.loadLocal();
+  // Timed mock: the run in progress ('run') and the last result ('last'). Separate from deck progress.
+  const MOCK = BANK.mock;
+  const mock = K.save.createStore({ localKey: APP + ':mock:v1', doc: 'mock', field: 'mock', normalize: keep(k => k === 'run' || k === 'last'),
+    onRemote() { if (SCREEN === 'mock' || SCREEN === 'lane') host.keepScroll(); }, onStatus: () => status() });
+  prefs.loadLocal(); decks.loadLocal(); beer.loadLocal(); mock.loadLocal();
   // A finished or abandoned game is stored as { done: true }, so other devices drop it too.
   const game = () => { const v = beer.get('game'); return v && !v.done ? v : undefined; };
 
@@ -151,8 +164,9 @@ table.t th { font-weight: 600; color: var(--muted); font-size: 13px; }
       (BANK.exam[l.id] ? '<p class="note"><b>The exam:</b> ' + esc(BANK.exam[l.id]) + '</p>' : '') + '</section>' +
       '<section aria-labelledby="sc-h"><div class="section-h"><h2 id="sc-h">Sections</h2><span class="hint">Weighted as the exam is</span></div><div class="card" style="padding-block:4px">' +
       secs.map(s => { const d = deckById(s.id), st = d && deckStats(d);
-        return '<div class="secrow" id="' + esc(l.id + '-' + s.id) + '"><div class="top"><b>' + esc(s.title) + '</b>' + (d ? '<span class="k">' + esc(s.kind) + '</span>' : '<span class="soon">Phase ' + s.phase + '</span>') + '</div>' +
+        return '<div class="secrow" id="' + esc(l.id + '-' + s.id) + '"><div class="top"><b>' + esc(s.title) + '</b>' + (d || (s.id === 'mock' && MOCK) ? '<span class="k">' + esc(s.kind) + '</span>' : '<span class="soon">Phase ' + s.phase + '</span>') + '</div>' +
           (d ? '<div class="items">' + itemRow('#deck-' + d.id, d.title + ' deck', s.questions + ' of 100 scored questions · ' + d.lessons.length + ' lessons · ' + st.right + ' of ' + st.n + ' right', 'Draft') + '</div>'
+            : s.id === 'mock' && MOCK ? '<div class="items">' + itemRow('#mock', MOCK.title, mockMeta(), MOCK.status) + '</div>'
             : '<span class="k">' + esc(s.kind) + (s.questions ? ' · ' + s.questions + ' of 100 scored questions' : '') + ' · not built yet</span>') + '</div>'; }).join('') +
       '</div></section>' + foot() + '</main>';
   }
@@ -185,7 +199,8 @@ table.t th { font-weight: 600; color: var(--muted); font-size: 13px; }
     const qs = d.questions.filter(q => q.lesson === l.id);
     app.innerHTML = host.header(d.title, 'deck', d.id, 'Back to the ' + d.title + ' deck', (i + 1) + ' of ' + d.lessons.length) +
       '<main class="wrap"><article class="card prose" style="display:grid;gap:12px"><div class="row">' + draftChip(l) + '<span class="lvchip">BoK ' + esc(l.bok) + '</span></div><h2 class="ttl" style="font-size:20px">' + esc(l.title) + '</h2>' +
-      l.body.map(p => '<p>' + esc(p) + '</p>').join('') +
+      l.body.map((p, k) => '<p>' + esc(p) + '</p>' + (l.figs || []).filter(g => g.after === k).map(g => '<figure class="lfig">' + g.svg +   // built from checked numbers in build.js (math/figs.js)
+        '<figcaption class="legend">' + g.legend.map(x => '<span><i style="background:var(' + esc(x[0]) + ')"></i>' + esc(x[1]) + '</span>').join('') + '</figcaption></figure>').join('')).join('') +
       '<h3 class="k">Sources</h3><ul class="src">' + l.sources.map(s => '<li><a href="' + esc(s[1]) + '" target="_blank" rel="noopener">' + esc(s[0]) + '</a> <span class="lvchip">' + esc(s[2]) + '</span></li>').join('') + '</ul></article>' +
       '<section aria-labelledby="lq-h" style="display:grid;gap:12px"><div class="section-h"><h2 id="lq-h">Check yourself</h2><span class="hint">' + qs.length + ' questions</span></div>' + qs.map(q => questionCard(q, PICKS[q.id], 'pick')).join('') + '</section>' +
       '<div class="row">' + (next ? '<a class="btn btn-primary" href="#lesson-' + esc(next.id) + '">Next: ' + esc(next.title) + '</a>' : '<button class="btn btn-primary" data-act="practice" data-id="' + d.id + '">Practice 10 from the deck</button>') + '<a class="btn" href="#deck-' + esc(d.id) + '">Back to the deck</a></div>' + foot() + '</main>';
@@ -300,13 +315,112 @@ table.t th { font-weight: 600; color: var(--muted); font-size: 13px; }
     VIEW = {}; host.keepScroll();
   }
 
+  // ---- Timed mock (#mock; Phase 2 option A, approved Nov 24). Questions drawn from the decks by section in the BoK
+  // ratio (build.js); sections keep BoK order, questions are shuffled within each. The clock runs from the stored start
+  // time, so it survives a reload and another device; a tick only repaints the clock and never writes.
+  const shuffle = a => { a = a.slice(); for (let i = a.length - 1; i > 0; i--) { const j = Math.floor(Math.random() * (i + 1)); [a[i], a[j]] = [a[j], a[i]]; } return a; };
+  function drawMock() { return [].concat(...MOCK.order.map(id => shuffle(deckById(id).questions.filter(q => q.mock).map(q => q.id)).slice(0, MOCK.draw[id]))); }
+  const run = () => { const v = mock.get('run'); return v && !v.done && Array.isArray(v.ids) ? JSON.parse(JSON.stringify(v)) : undefined; };
+  const putRun = r => { r.ts = Date.now(); mock.put('run', r); };
+  const msLeft = r => MOCK.minutes * 60000 - ((r.pausedAt || Date.now()) - r.start - (r.pausedMs || 0));
+  const clock = ms => { ms = Math.max(0, ms); const s = Math.floor(ms / 1000); return Math.floor(s / 3600) + ':' + String(Math.floor(s / 60) % 60).padStart(2, '0') + ':' + String(s % 60).padStart(2, '0'); };
+  const pct = (a, b) => b ? Math.round(100 * a / b) + '%' : '—';
+  const secTitle = id => { const s = (SECTIONS.quality || []).find(x => x.id === id); return s ? s.title : id; };
+  function mockMeta() { const r = run(), last = mock.get('last');
+    return r ? 'In progress · ' + clock(msLeft(r)) + ' left · ' + Object.keys(r.picks).length + ' of ' + r.ids.length + ' answered'
+      : MOCK.total + ' questions · 4 h 18 min' + (last && last.total ? ' · last: ' + last.right + ' of ' + last.total + ' (' + pct(last.right, last.total) + ')' : ''); }
+  function finishMock(r) {
+    const used = Math.min(MOCK.minutes * 60000, (r.pausedAt || Date.now()) - r.start - (r.pausedMs || 0)), by = {};
+    MOCK.order.forEach(id => { by[id] = [0, 0]; });
+    r.ids.forEach(id => { const q = QS[id]; by[q.deck][1]++; if (r.picks[id] === q.answer) by[q.deck][0]++; });
+    const right = r.ids.filter(id => r.picks[id] === QS[id].answer).length;
+    mock.put('last', { ts: Date.now(), total: r.ids.length, right, by, ids: r.ids, picks: r.picks, flags: r.flags, usedMs: used, timedOut: msLeft(r) <= 0 });
+    mock.put('run', { ts: Date.now(), done: true });
+    host.go('mock', { results: true });
+  }
+  let TICK = null;
+  function tick() {
+    clearInterval(TICK); TICK = null;
+    if (SCREEN !== 'mock') return;
+    TICK = setInterval(() => {
+      const r = run(), el = document.getElementById('mock-clock');
+      if (SCREEN !== 'mock' || !r) { clearInterval(TICK); TICK = null; return; }
+      const left = msLeft(r);
+      if (left <= 0) { clearInterval(TICK); TICK = null; finishMock(r); return; }
+      if (el) { el.textContent = clock(left); el.classList.toggle('low', left < 15 * 60000); }
+    }, 1000);
+  }
+  function renderMock() {
+    const r = run();
+    if (r && msLeft(r) <= 0) return finishMock(r);
+    if (r) return VIEW.review ? renderMockReview(r) : renderMockQuestion(r);
+    const last = mock.get('last');
+    if (VIEW.results && last && last.total) return renderMockResults(last);
+    app.innerHTML = host.header(MOCK.title, 'lane', 'quality', 'Back to the Quality lane', 'Draft') + '<main class="wrap" style="display:grid;gap:12px">' +
+      '<section class="card prose" style="display:grid;gap:10px"><div class="row"><span class="cchip draft">Draft</span><span class="lvchip">ASQ CSSGB · ' + MOCK.total + ' questions · 4 h 18 min</span></div>' +
+      '<p>' + MOCK.total + ' questions in 4 hours 18 minutes, as on the computer-based exam: 100 scored and 10 unscored there; here every question counts. They are drawn from this app\'s six decks in the Body of Knowledge ratio, so you may have seen some of them before.</p>' +
+      '<div class="scroll"><table class="t"><thead><tr><th>Section</th><th>Questions</th></tr></thead><tbody>' + MOCK.order.map(id => '<tr><td>' + esc(secTitle(id)) + '</td><td>' + MOCK.draw[id] + '</td></tr>').join('') + '</tbody></table></div>' +
+      '<p>The clock keeps running if you close the page and comes back with your answers, on this device or, when saved to your account, another one. You can flag questions and see them all on a review screen before you submit. At 0:00:00 the mock submits itself.</p>' +
+      '<p class="note">' + esc(MOCK.scoring) + '</p>' +
+      '<button class="tog" data-act="mock-pause-opt" aria-pressed="' + !!VIEW.allowPause + '">Allow pausing (the real exam does not)</button>' +
+      '<div class="row"><button class="btn btn-primary" data-act="mock-start">Start the mock</button>' + (last && last.total ? '<button class="btn" data-act="mock-last">Last result</button>' : '') + '</div>' +
+      '<h3 class="k">Sources</h3><ul class="src">' + MOCK.sources.map(s => '<li><a href="' + esc(s[1]) + '" target="_blank" rel="noopener">' + esc(s[0]) + '</a> <span class="lvchip">' + esc(s[2]) + '</span></li>').join('') + '</ul>' +
+      '<p class="note" id="mock-saved">' + esc(mock.statusText()) + '</p></section>' + foot() + '</main>';
+  }
+  function mockTop(r) {
+    return '<div class="playtop"><div class="wrap"><button class="iconbtn" data-act="mock-review" aria-label="Review all questions">' + X + '</button><h1 class="ttl">Mock · ' + (r.i + 1) + ' of ' + r.ids.length + '</h1>' +
+      '<span class="meta"><span class="timer' + (msLeft(r) < 15 * 60000 ? ' low' : '') + '" id="mock-clock" role="timer" aria-label="Time left">' + clock(msLeft(r)) + '</span></span></div></div>';
+  }
+  function renderMockQuestion(r) {
+    const id = r.ids[r.i], q = QS[id], pick = r.picks[id], flagged = !!r.flags[id];
+    if (r.pausedAt) {
+      app.innerHTML = mockTop(r) + '<main class="wrap" style="display:grid;gap:12px"><section class="card" style="display:grid;gap:10px"><h2 class="ttl" style="font-size:20px">Paused</h2><p class="note">The clock is stopped and the question is hidden.</p>' +
+        '<div class="row"><button class="btn btn-primary" data-act="mock-resume">Resume</button></div></section></main>';
+      return tick();
+    }
+    app.innerHTML = mockTop(r) + '<main class="wrap" style="display:grid;gap:12px">' +
+      '<section class="card" style="display:grid;gap:10px" id="mq"><div class="row"><span class="qid">' + (r.i + 1) + '</span>' + (flagged ? '<span class="cchip draft">Flagged</span>' : '') + '</div><p class="stem">' + esc(q.stem) + '</p>' +
+      '<div class="opts" role="radiogroup" aria-label="Options">' + q.options.map((o, j) => '<button class="opt' + (pick === j ? ' is-picked' : '') + '" role="radio" aria-checked="' + (pick === j) + '" data-act="mock-pick" data-id="' + esc(id) + '" data-j="' + j + '"><span class="key" aria-hidden="true">' + 'ABCD'[j] + '</span><span>' + esc(o) + '</span></button>').join('') + '</div></section>' +
+      '<div class="row"><button class="btn" data-act="mock-go" data-id="' + (r.i - 1) + '"' + (r.i === 0 ? ' disabled' : '') + '>Previous</button>' +
+      (r.i + 1 < r.ids.length ? '<button class="btn btn-primary" data-act="mock-go" data-id="' + (r.i + 1) + '">Next</button>' : '<button class="btn btn-primary" data-act="mock-review">Review and submit</button>') +
+      '<button class="tog" data-act="mock-flag" aria-pressed="' + flagged + '">Flag</button></div>' +
+      '<div class="row"><button class="btn btn-quiet" data-act="mock-review">Review all (' + Object.keys(r.picks).length + ' of ' + r.ids.length + ' answered)</button>' + (r.allowPause ? '<button class="btn btn-quiet" data-act="mock-pause">Pause</button>' : '') + '</div>' +
+      '<p class="note" id="mock-saved">' + esc(mock.statusText()) + '</p></main>';
+    tick();
+  }
+  function renderMockReview(r) {
+    const answered = Object.keys(r.picks).length, flagged = Object.keys(r.flags).length;
+    const show = r.ids.map((id, k) => [id, k]).filter(([id]) => !VIEW.flaggedOnly || r.flags[id]);
+    app.innerHTML = '<div class="playtop"><div class="wrap"><button class="iconbtn" data-act="mock-go" data-id="' + r.i + '" aria-label="Back to the question">' + X + '</button><h1 class="ttl">Review</h1>' +
+      '<span class="meta"><span class="timer' + (msLeft(r) < 15 * 60000 ? ' low' : '') + '" id="mock-clock" role="timer" aria-label="Time left">' + clock(msLeft(r)) + '</span></span></div></div>' +
+      '<main class="wrap" style="display:grid;gap:12px"><section class="card" style="display:grid;gap:10px"><div class="stat"><div><span class="v">' + answered + '/' + r.ids.length + '</span><span class="l">answered</span></div><div><span class="v">' + flagged + '</span><span class="l">flagged</span></div></div>' +
+      '<button class="tog" data-act="mock-flagged" aria-pressed="' + !!VIEW.flaggedOnly + '">Only flagged</button>' +
+      '<div class="mgrid" role="list">' + show.map(([id, k]) => '<button role="listitem" class="' + [r.picks[id] !== undefined ? 'ans' : '', r.flags[id] ? 'flg' : '', k === r.i ? 'cur' : ''].join(' ').trim() + '" data-act="mock-go" data-id="' + k + '" aria-label="Question ' + (k + 1) + (r.picks[id] !== undefined ? ', answered' : ', not answered') + (r.flags[id] ? ', flagged' : '') + '">' + (k + 1) + '</button>').join('') + '</div>' +
+      (show.length ? '' : '<p class="note">No flagged questions.</p>') +
+      '<p class="note">Shaded: answered. Outlined: flagged.</p>' +
+      '<div class="row"><button class="btn btn-primary" data-act="mock-submit">Submit the mock</button><button class="btn" data-act="mock-go" data-id="' + r.i + '">Back to question ' + (r.i + 1) + '</button></div>' +
+      '<div class="row"><button class="btn btn-quiet" data-act="mock-quit">Abandon this mock</button></div><p class="note" id="mock-saved">' + esc(mock.statusText()) + '</p></section>' + foot() + '</main>';
+    tick();
+  }
+  function renderMockResults(last) {
+    const misses = last.ids.filter(id => QS[id] && last.picks[id] !== QS[id].answer);
+    app.innerHTML = host.header('Mock result', 'lane', 'quality', 'Back to the Quality lane', 'Draft') + '<main class="wrap" style="display:grid;gap:12px">' +
+      '<section class="card" style="display:grid;gap:10px"><div class="row"><span class="cchip draft">Draft</span><span class="k">' + (last.timedOut ? 'Time ran out' : 'Submitted') + ' · ' + clock(last.usedMs) + ' used</span></div>' +
+      '<div class="stat" id="mock-score"><div><span class="v">' + last.right + '/' + last.total + '</span><span class="l">right</span></div><div><span class="v">' + pct(last.right, last.total) + '</span><span class="l">percent right</span></div></div>' +
+      '<p class="note">' + esc(MOCK.scoring) + '</p>' +
+      '<div class="scroll"><table class="t" id="mock-by"><thead><tr><th>Section</th><th>Right</th><th>%</th></tr></thead><tbody>' + MOCK.order.map(id => { const b = (last.by || {})[id] || [0, 0]; return '<tr><td><a href="#deck-' + esc(id) + '">' + esc(secTitle(id)) + '</a></td><td>' + b[0] + '/' + b[1] + '</td><td>' + pct(b[0], b[1]) + '</td></tr>'; }).join('') + '</tbody></table></div></section>' +
+      '<section aria-labelledby="mm-h"><div class="section-h"><h2 id="mm-h">Missed questions</h2><span class="hint">' + misses.length + ' · each links to its lesson</span></div><div class="card" style="display:grid;gap:8px">' +
+      (misses.length ? '<ul class="src" id="mock-misses">' + misses.map(id => { const q = QS[id], l = LESSONS[q.lesson]; return '<li><a href="#lesson-' + esc(q.lesson) + '">' + esc(id) + ' · ' + esc(l.title) + '</a> <span class="k">' + (last.picks[id] === undefined ? 'not answered' : 'you picked ' + 'ABCD'[last.picks[id]] + ', answer ' + 'ABCD'[q.answer]) + '</span></li>'; }).join('') + '</ul>' : '<p class="note">None.</p>') + '</div></section>' +
+      '<div class="row"><button class="btn btn-primary" data-act="mock-start">Start a new mock</button><a class="btn" href="#lane-quality">Back to the lane</a></div><p class="note" id="mock-saved">' + esc(mock.statusText()) + '</p>' + foot() + '</main>';
+  }
+
   function foot() {
     const t = theme();
     return '<footer class="foot"><div class="row"><span>Theme:</span>' + ['system', 'light', 'dark'].map(x => '<button class="tog" data-act="theme" data-id="' + x + '" aria-pressed="' + (t === x) + '">' + x[0].toUpperCase() + x.slice(1) + '</button>').join('') + '</div>' +
       '<p>Engines: study-kit ' + esc(BANK.kitVersion) + '. Draft content has not been reviewed yet. Claude grading and role-plays work when this page is open in Claude; everything else works without it.</p></footer>';
   }
 
-  const SCREENS = Object.assign({ home: renderHome, lane: renderLane, deck: renderDeck, lesson: renderLesson, practice: renderPractice, cards: renderCards, beer: renderBeer }, craft.screens, sims.screens);
+  const SCREENS = Object.assign({ home: renderHome, lane: renderLane, deck: renderDeck, lesson: renderLesson, practice: renderPractice, cards: renderCards, beer: renderBeer, mock: renderMock }, craft.screens, sims.screens);
   const ACT = Object.assign({
     home() { history.replaceState(null, '', location.pathname + location.search); host.go('home', {}); },
     lane(t) { const l = laneById(t.dataset.id); if (!l || !l.active) return; prefs.put('lane', { ts: Date.now(), v: l.id }); history.replaceState(null, '', '#lane-' + l.id); host.go('lane', { id: l.id }); },
@@ -331,6 +445,19 @@ table.t th { font-weight: 600; color: var(--muted); font-size: 13px; }
     'beer-dec'() { const q = qtyNow(); VIEW.qty = Math.max(0, (q === null ? 0 : q) - 1); host.keepScroll(); },
     'beer-order'() { placeOrder(qtyNow()); },
     'beer-same'() { const g = game(); placeOrder(g && g.orders && g.orders.length ? g.orders[g.orders.length - 1] : 4); },
+    'mock-pause-opt'() { VIEW.allowPause = !VIEW.allowPause; host.keepScroll(); },
+    'mock-start'() { const ids = drawMock(); mock.put('run', { ts: Date.now(), ids, picks: {}, flags: {}, start: Date.now(), allowPause: !!VIEW.allowPause, pausedAt: 0, pausedMs: 0, i: 0 }); host.go('mock', {}); },
+    'mock-pick'(t) { const r = run(); if (!r || r.pausedAt) return; r.picks[t.dataset.id] = +t.dataset.j; putRun(r); host.keepScroll(); },
+    'mock-flag'() { const r = run(); if (!r) return; const id = r.ids[r.i]; if (r.flags[id]) delete r.flags[id]; else r.flags[id] = 1; putRun(r); host.keepScroll(); },
+    'mock-go'(t) { const r = run(); if (!r) return; r.i = Math.max(0, Math.min(r.ids.length - 1, +t.dataset.id)); putRun(r); VIEW.review = false; host.render(); window.scrollTo(0, 0); },
+    'mock-review'() { VIEW.review = true; VIEW.flaggedOnly = false; host.render(); window.scrollTo(0, 0); },
+    'mock-flagged'() { VIEW.flaggedOnly = !VIEW.flaggedOnly; host.keepScroll(); },
+    'mock-pause'() { const r = run(); if (!r || !r.allowPause || r.pausedAt) return; r.pausedAt = Date.now(); putRun(r); host.keepScroll(); },
+    'mock-resume'() { const r = run(); if (!r || !r.pausedAt) return; r.pausedMs += Date.now() - r.pausedAt; r.pausedAt = 0; putRun(r); host.keepScroll(); },
+    'mock-submit'() { const r = run(); if (!r) return; const left = r.ids.filter(id => r.picks[id] === undefined).length;
+      if (left) host.confirm('Submit the mock?', left + ' question' + (left === 1 ? ' is' : 's are') + ' unanswered and will be marked wrong.', 'Submit', () => finishMock(r)); else finishMock(r); },
+    'mock-quit'() { host.confirm('Abandon this mock?', 'Your answers so far are discarded and nothing is scored.', 'Abandon', () => { mock.put('run', { ts: Date.now(), done: true }); host.go('mock', {}); }); },
+    'mock-last'() { host.go('mock', { results: true }); },
     'beer-quit'() { host.confirm('Abandon this game?', 'Your orders so far are discarded.', 'Abandon', () => { beer.put('game', { ts: Date.now(), done: true }); host.go('beer', {}); }); }
   }, craft.actions, sims.actions);
   function render() { (SCREENS[SCREEN] || renderHome)(); }
@@ -344,6 +471,7 @@ table.t th { font-weight: 600; color: var(--muted); font-size: 13px; }
     if ((m = /^#practice-([a-z0-9-]+)$/.exec(h || '')) && deckById(m[1])) { const d = deckById(m[1]); host.go('practice', { deck: d.id, ids: practiceSet(d), i: 0, picks: {} }); return true; }
     if ((m = /^#lesson-([a-z]+-\d+)$/.exec(h || '')) && LESSONS[m[1]]) { host.go('lesson', { id: m[1] }); return true; }
     if (h === '#beer-game') { host.go('beer', {}); return true; }
+    if (h === '#mock' && MOCK) { host.go('mock', {}); return true; }
     return craft.route(h) || sims.route(h);
   }
   document.addEventListener('click', e => { const t = e.target.closest('[data-act]'); if (!t || t.disabled) return; const fn = ACT[t.dataset.act]; if (fn) fn(t, e); });
@@ -363,10 +491,10 @@ table.t th { font-weight: 600; color: var(--muted); font-size: 13px; }
     try { const fn = await C.use('sample'); if (typeof fn === 'function') { SAMPLE = fn; if (['craft', 'packet', 'stage', 'sims', 'run', 'rp'].indexOf(SCREEN) !== -1) host.keepScroll(); } } catch (e) { /* not granted */ }
     try {
       const db = await C.use('db'), user = await C.use('user'), uid = user && await user.id();
-      if (db && uid) { prefs.attach(db, uid); decks.attach(db, uid); beer.attach(db, uid); craft.attach(db, uid); sims.attach(db, uid); if (SCREEN === 'home') host.keepScroll(); }
+      if (db && uid) { prefs.attach(db, uid); decks.attach(db, uid); beer.attach(db, uid); mock.attach(db, uid); craft.attach(db, uid); sims.attach(db, uid); if (SCREEN === 'home') host.keepScroll(); }
     } catch (e) { /* saved on this device only */ }
   })();
-  window.__tp = { craft, sims, prefs, decks, beer, host };
+  window.__tp = { craft, sims, prefs, decks, beer, mock, host, drawMock };
 })();
 </script>
 </body>

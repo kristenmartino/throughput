@@ -149,7 +149,7 @@ function compute2() {
   Object.assign(N.an7, { wRow: N.an7.r1 / 3, wCol: N.an7.c1 / 3 });
   Object.assign(N.im2, { Ahalf: N.im2.A / 2, ABx2: N.im2.AB * 2 }); N.im4.noSafetyUp = Math.ceil(N.im4.noSafety);
   Object.assign(N.ov3, { shortUnits: N.ov3.demand - N.ov3.maxOut, taktNoBreak: 2 * 8 * 60 / N.ov3.demand, taktOneShift: (8 * 60 - 30) / N.ov3.demand });
-  Object.assign(N.ov4, { wRatio: N.ov4.vaT / N.ov4.nva, wNva: N.ov4.nva / N.ov4.lead });
+  Object.assign(N.ov4, { wRatio: N.ov4.vaT / N.ov4.nva, wNva: N.ov4.nva / N.ov4.lead, wCal: N.ov4.vaT / (72 * 60) });
   N.an8.gapPts = (0.95 - 0.82) * 100;
   N.an9 = { pa: 0.02, pb: 0.05, and: 0.02 * 0.05, or: 1 - (1 - 0.02) * (1 - 0.05), sum: 0.02 + 0.05 };
   // wrong-answer values for the Control questions

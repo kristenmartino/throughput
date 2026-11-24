@@ -127,7 +127,7 @@ def compute2():
     a7 = N['an7']; a7.update(wRow=a7['r1'] / 3, wCol=a7['c1'] / 3)
     N['im2'].update(Ahalf=N['im2']['A'] / 2, ABx2=N['im2']['AB'] * 2); N['im4']['noSafetyUp'] = math.ceil(180 * 2 / 25)
     N['ov3'].update(shortUnits=360 - avail / cycle, taktNoBreak=960 / 360, taktOneShift=450 / 360)
-    N['ov4'].update(wRatio=vaT / (lead - vaT), wNva=(lead - vaT) / lead)
+    N['ov4'].update(wRatio=vaT / (lead - vaT), wNva=(lead - vaT) / lead, wCal=vaT / (72 * 60))
     N['an8']['gapPts'] = (0.95 - 0.82) * 100
     N['an9'] = dict(pa=0.02, pb=0.05, **{'and': 0.02 * 0.05, 'or': 1 - 0.98 * 0.95}, sum=0.07)
     c, p = N['co3'], N['co4']
