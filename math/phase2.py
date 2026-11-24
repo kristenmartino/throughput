@@ -133,10 +133,15 @@ def compute2():
     c, p = N['co3'], N['co4']
     c.update(uclXA2n2=xbb + K['A2n2'] * rbar, a2r=K['A2n5'] * rbar, r3=3 * rbar, uclIw1=ind.mean() + 3 * mr.mean(), uclIw2=ind.mean() + K['D4n2'] * mr.mean(), uclIw3=ind.mean() + mr.mean() / K['d2n2'])
     p.update(qbar=1 - pbar, wNoN=pbar + 3 * math.sqrt(pbar * (1 - pbar)), wPx3=pbar + 3 * pbar, sqrtC=math.sqrt(6.2), cW1=6.2 + 3 * 6.2, cW2=6.2 + math.sqrt(6.2), cW3=6.2 + 3 * math.sqrt(6.2 / 5))
+    import importlib.util, os
+    spec = importlib.util.spec_from_file_location('mock', os.path.join(os.path.dirname(os.path.abspath(__file__)), 'mock.py'))
+    mk = importlib.util.module_from_spec(spec); spec.loader.exec_module(mk)
+    mock_out = mk.compute_mock(K)
     out = {}
     for key, d in N.items():
         for j, v in d.items():
             out[f'{key}.{j}'] = float(v)
+    out.update(mock_out)
     return out
 
 if __name__ == '__main__':

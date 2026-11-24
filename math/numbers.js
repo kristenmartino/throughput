@@ -78,6 +78,7 @@ function compute() {
     N.ms9 = { usl, lsl, t, mu, sw, so, cp, cpk, pp, ppk, cpm, cpkWrongSide: (mu - lsl) / (3 * sw), zUw: (usl - mu) / sw, zU, zL, ppmU, ppmL, ppm: ppmU + ppmL, zSt: zU + 1.5, sigma3cpk: 3 * cpk,
       sixSigmaDpmo: (1 - phi(4.5)) * 1e6, cp133Ppm: 2 * (1 - phi(4)) * 1e6 }; }
   Object.assign(N, require('./phase2.js').compute2());
+  N.mk = require('./mock.js').computeMock(N);   // held-out mock pool (Phase 2b)
   return N;
 }
 
