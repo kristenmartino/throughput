@@ -159,6 +159,33 @@ const BEER = require('./content/beer.js');
 for (const p of BEER.lesson) if (!/\((Read|Relayed|Inferred|Measured)/.test(p)) errors.push('beer lesson: every paragraph needs a tier tag');
 claim(BEER.id, 'game');
 
+// ---- Bottleneck line (Phase 3): engine math/bottleneck.js, checked against math/bottleneck.py above. The lesson's
+// claims are asserted here, so a change to the rules that breaks one stops the build.
+const BN = require('./math/bottleneck.js'), BNC = require('./content/bottleneck.js');
+claim(BNC.id, 'game');
+const bottleneck = (() => {
+  const R = BN.RULES, best = mc.bottleneck.best, none = Array(R.rounds).fill(-1), pad = a => a.concat(Array(R.rounds - a.length).fill(-1));
+  const run = p => BN.stats(BN.play(p)), push = run({ release: 'push', buys: none }), rope = run({ release: 'rope', buys: none });
+  const minCap = Math.min.apply(null, R.caps), c0 = R.caps.indexOf(minCap), after = R.caps.slice(); after[c0] += R.step;
+  const c1cap = Math.min.apply(null, after), c1 = after.indexOf(c1cap), waste = 0, wasted = run({ release: 'rope', buys: pad([waste, waste, waste]) });
+  const usd = d => (d < 0 ? '−$' : '$') + Math.abs(d).toLocaleString('en-US');
+  const planText = p => (p.release === 'rope' ? 'release at the constraint\'s pace' : 'push') + (p.buys.some(b => b >= 0) ? ', then buy ' + p.buys.map((b, t) => b >= 0 ? R.names[b] + ' in round ' + (t + 1) : null).filter(Boolean).join(', ') : ', and buy nothing');
+  if (push.out !== rope.out) errors.push('bottleneck lesson: push and pacing should sell the same with no purchases');
+  if (!(push.profit < rope.profit) || !(push.endWip > rope.endWip)) errors.push('bottleneck lesson: push should end with more WIP and less profit');
+  if (wasted.out !== rope.out || wasted.profit !== rope.profit - 3 * R.stepCost || waste === c0) errors.push('bottleneck lesson: steps at a non-constraint should change nothing but cost');
+  if (best.release !== 'rope' || !best.buys.some(b => b === c0)) errors.push('bottleneck lesson: the best plan should pace release and elevate the constraint');
+  const V = { rounds: R.rounds, budget: usd(R.budget), stations: R.names.join(', '), init: R.init, caps: R.names.map((nm, i) => nm + ' ' + R.caps[i]).join(', '),
+    margin: usd(R.margin), wipCost: usd(R.wipCost), step: R.step, stepCost: usd(R.stepCost), cap0: R.caps[0], maxBuys: Math.floor(R.budget / R.stepCost),
+    c0name: R.names[c0], c0cap: minCap, c0after: after[c0], c1name: R.names[c1], c1cap: c1cap, c4name: R.names[waste],
+    pushOut: push.out, pushEndWip: push.endWip, ropeEndWip: rope.endWip, pushProfit: usd(push.profit), ropeProfit: usd(rope.profit),
+    ropeWip: rope.avgWip.toFixed(1), ropeLead: rope.lead.toFixed(1), pushLead: push.lead.toFixed(1), wasted: usd(rope.profit - wasted.profit),
+    searched: best.searched.toLocaleString('en-US'), bestPlan: planText(best), bestProfit: usd(best.profit) };
+  const f = (t, w) => t.replace(/\{([A-Za-z0-9]+)\}/g, (m, k) => { if (!(k in V)) { errors.push('bottleneck ' + w + ': unknown {' + k + '}'); return m; } return String(V[k]); });
+  BNC.lesson.forEach((p, i) => { if (!/\((Read|Relayed|Inferred|Measured|Computed)/.test(p)) errors.push('bottleneck lesson ' + (i + 1) + ': needs a tier tag'); });
+  return { id: BNC.id, title: BNC.title, status: BNC.status, blurb: f(BNC.blurb, 'blurb'), briefing: BNC.briefing.map((p, i) => f(p, 'briefing ' + i)),
+    lesson: BNC.lesson.map((p, i) => f(p, 'lesson ' + i)), sources: BNC.sources.map(k => SRC[k]), best, bestText: planText(best), ref: { push, rope } };
+})();
+
 // ---- Inventory sim (Phase 3): rules and demand in data/inventory.json; engine math/inventory.js, checked against
 // math/inventory.py above. {key} placeholders in its text come from the checked engine.
 const INVD = require('./data/inventory.json'), IE = require('./math/inventory.js'), INVC = require('./content/inventory.js');
@@ -193,7 +220,7 @@ const PUB = path.join(here, 'published-ids.json');
 const pub = JSON.parse(fs.readFileSync(PUB, 'utf8'));
 const now = { lanes: laneIds, sections: sectionIds, craft: craft.ids, sims: sims.ids,
   lessons: [].concat(...DECKS.map(d => d.lessons.map(l => l.id))), questions: [].concat(...DECKS.map(d => d.questions.map(q => q.id))),
-  cards: [].concat(...DECKS.map(d => d.cards.map(c => c.id))), decks: DECKS.map(d => d.id), games: [BEER.id, INVC.id], mocks: [MOCK.id], mockQuestions: [].concat(...Object.values(MOCK.pool).map(l => l.map(q => q.id))) };
+  cards: [].concat(...DECKS.map(d => d.cards.map(c => c.id))), decks: DECKS.map(d => d.id), games: [BEER.id, INVC.id, BNC.id], mocks: [MOCK.id], mockQuestions: [].concat(...Object.values(MOCK.pool).map(l => l.map(q => q.id))) };
 for (const k of Object.keys(pub)) if (k !== 'note' && !(k in now)) errors.push('published-ids.json has an unknown kind ' + k);
 for (const k of Object.keys(now)) for (const id of (pub[k] || [])) if (now[k].indexOf(id) === -1) errors.push('published ' + k + ' id ' + id + ' is missing; links depend on it');
 if (errors.length) { console.error(errors.join('\n')); process.exit(1); }
@@ -210,14 +237,14 @@ const ref = { average: mc.beer.all_average, benchSeat: mc.beer.bench_in_seat }; 
 const BG = require('./math/beer.js');
 const beer = { id: BEER.id, title: BEER.title, status: BEER.status, blurb: BEER.blurb, briefing: BEER.briefing, lesson: BEER.lesson, sources: BEER.sources.map(k => SRC[k]),
   refTeam2: { average: BG.stats(ref.average).team2, bench: BG.stats(mc.beer.all_bench).team2 }, benchAll2: BG.stats(mc.beer.all_bench).stages.map(s => s.cost2), benchTeam2: ref.benchSeat.map(g => BG.stats(g).team2) };
-const bank = { lanes: L.lanes, sections: L.sections, exam: L.exam, craft: craft.packets, runs: sims.runs, roleplays: sims.roleplays, kitVersion, decks: DECKS, beer, inventory, mock: MOCK };
+const bank = { lanes: L.lanes, sections: L.sections, exam: L.exam, craft: craft.packets, runs: sims.runs, roleplays: sims.roleplays, kitVersion, decks: DECKS, beer, inventory, bottleneck, mock: MOCK };
 const LS = String.fromCharCode(0x2028), PS = String.fromCharCode(0x2029);
 const json = JSON.stringify(bank).replace(/<\//g, '<\\/').split(LS).join('\\u2028').split(PS).join('\\u2029');
 const tpl = read('index.src.html');
-for (const t of ['__BANK__', '__STUDY_KIT__', '__SHELL_CSS__', '__KIT_CSS__', '__BEER_ENGINE__', '__INV_ENGINE__']) if (tpl.split(t).length !== 2) { console.error('template must contain one ' + t); process.exit(1); }
+for (const t of ['__BANK__', '__STUDY_KIT__', '__SHELL_CSS__', '__KIT_CSS__', '__BEER_ENGINE__', '__INV_ENGINE__', '__BN_ENGINE__']) if (tpl.split(t).length !== 2) { console.error('template must contain one ' + t); process.exit(1); }
 const kit = read('vendor/study-kit/study-kit.js').replace(/<\//g, '<\\/');
 const out = tpl.replace('__SHELL_CSS__', () => read('vendor/study-kit/shell.css')).replace('__KIT_CSS__', () => read('vendor/study-kit/study-kit.css'))
-  .replace('__STUDY_KIT__', () => kit).replace('__BEER_ENGINE__', () => read('math/beer.js').replace(/<\//g, '<\\/')).replace('__INV_ENGINE__', () => read('math/inventory.js').replace(/<\//g, '<\\/')).replace('__BANK__', () => json);
+  .replace('__STUDY_KIT__', () => kit).replace('__BEER_ENGINE__', () => read('math/beer.js').replace(/<\//g, '<\\/')).replace('__INV_ENGINE__', () => read('math/inventory.js').replace(/<\//g, '<\\/')).replace('__BN_ENGINE__', () => read('math/bottleneck.js').replace(/<\//g, '<\\/')).replace('__BANK__', () => json);
 fs.mkdirSync(path.join(here, 'build'), { recursive: true });
 fs.writeFileSync(path.join(here, 'build', 'index.html'), out);
 fs.writeFileSync(path.join(here, 'build', 'bank.json'), JSON.stringify(bank));   // for the blind-check export; not published

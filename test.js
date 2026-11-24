@@ -70,6 +70,10 @@ function ok(c, m) { if (c) pass++; else { fails.push(m); console.log('FAIL', m);
     await page.fill('#inv-q', '300'); await page.fill('#inv-rop', '250'); await act(page, 'inv-start'); await page.waitForSelector('#inv-news'); await fit(page, tag + ' inventory review');
     await act(page, 'inv-keep'); await page.waitForSelector('#inv-news'); await act(page, 'inv-keep'); await page.waitForSelector('#inv-news'); await act(page, 'inv-keep'); await page.waitForSelector('#inv-compare');
     await fit(page, tag + ' inventory debrief');
+    await page.goto(URL + '#bottleneck-sim'); await page.waitForSelector('[data-act="bn-start"]'); await fit(page, tag + ' bottleneck intro');
+    await act(page, 'bn-start'); await page.waitForSelector('#bn-line'); await page.locator('[data-act="bn-buy"][data-id="3"]').click(); await page.waitForSelector('#bn-hist'); await fit(page, tag + ' bottleneck round');
+    for (let k = 0; k < 11; k++) await page.locator('[data-act="bn-buy"][data-id="-1"]').click();
+    await page.waitForSelector('#bn-compare'); await fit(page, tag + ' bottleneck debrief');
     // a Phase 2 lesson with every question answered, and the mock: question, review and result screens
     await page.goto(URL + '#lesson-an-6'); await page.waitForSelector('[data-act="pick"]');
     for (let i = 0; i < 4; i++) { const b = page.locator('[data-act="pick"]:not([disabled])').nth(0); if (await b.count()) await b.click(); }
@@ -365,6 +369,41 @@ function ok(c, m) { if (c) pass++; else { fails.push(m); console.log('FAIL', m);
     ok(JSON.stringify(await page.evaluate(() => window.__tp.inv.get('game').dec)) === JSON.stringify([{ q: 400, rop: 300 }, { q: 400, rop: 300 }]), 'inventory: Keep repeats the last settings');
     await act(page, 'inv-quit'); await page.waitForSelector('.cfm'); await page.locator('[data-cfm="ok"]').click(); await page.waitForSelector('#inv-q');
     ok(await page.evaluate(() => { const g = window.__tp.inv.get('game'); return !g || g.done; }), 'inventory: abandoning ends the game');
+    await ctx.close();
+  }
+
+  // ---- 2f. bottleneck line (Phase 3)
+  {
+    const BNE = require('./math/bottleneck.js'), R = BNE.RULES;
+    const { ctx, page } = await newPage(), B = BANK.bottleneck;
+    ok(B && B.best.searched === 58422 && B.best.release === 'rope', 'bottleneck: best plan found among 58,422 and it paces release');
+    ok(B.lesson.concat(B.briefing, [B.blurb]).every(p => !/\{[A-Za-z0-9]+\}/.test(p)), 'bottleneck: every placeholder filled');
+    await page.goto(URL + '#lane-supply-chain'); await page.waitForSelector('#supply-chain-bottleneck');
+    ok(await page.locator('#supply-chain-bottleneck a[href="#bottleneck-sim"]').count() === 1, 'lane links the bottleneck sim');
+    await page.goto(URL + '#bottleneck-sim'); await page.waitForSelector('[data-act="bn-start"]');
+    ok(await page.locator('[data-act="bn-rel"][data-id="rope"]').getAttribute('aria-pressed') === 'true', 'bottleneck: pacing release chosen by default');
+    // play the best plan through the page
+    const bp = B.best;
+    if (bp.release === 'push') await page.locator('[data-act="bn-rel"][data-id="push"]').click();
+    await act(page, 'bn-start'); await page.waitForSelector('#bn-line');
+    ok(/slowest/.test(await page.locator('#bn-line tbody tr').nth(3).textContent()), 'bottleneck: Assemble marked slowest at the start');
+    for (let t = 0; t < R.rounds; t++) {
+      await page.locator('[data-act="bn-buy"][data-id="' + bp.buys[t] + '"]').click();
+      await page.waitForSelector(t < R.rounds - 1 ? '#bn-hist' : '#bn-compare');
+      if (t === 0) { ok(await page.locator('#bn-hist tbody tr').count() === 1, 'bottleneck: one round in the history'); await page.reload(); await page.waitForSelector('#bn-line'); ok(/Round 2 of 12/.test(await page.locator('.playtop .meta').textContent()), 'bottleneck: a reload keeps the run'); }
+      if (t === 2) ok(await page.locator('[data-act="bn-buy"][data-id="0"]').isDisabled(), 'bottleneck: purchases disabled once the budget is spent');
+    }
+    const s = BNE.stats(BNE.play(bp)), usd = d => (d < 0 ? '−$' : '$') + Math.abs(d).toLocaleString('en-US');
+    const sc = await page.locator('#bn-score .v').allTextContents();
+    ok(sc[0] === usd(s.profit) && sc[0] === usd(bp.profit), 'bottleneck: debrief profit matches the best plan (' + sc[0] + ')');
+    const rows = await page.locator('#bn-compare tbody tr').allTextContents();
+    ok(rows.length === 4 && rows[2].indexOf(usd(B.ref.rope.profit)) !== -1 && rows[3].indexOf(usd(B.ref.push.profit)) !== -1, 'bottleneck: comparison has you, best, pace and push');
+    ok(B.ref.push.profit < B.ref.rope.profit && B.ref.push.out === B.ref.rope.out, 'bottleneck: push sells the same and earns less than pacing');
+    ok(await page.evaluate(() => window.__tp.bn.get('best').profit) === s.profit, 'bottleneck: best profit saved');
+    // abandon
+    await act(page, 'bn-again'); await page.waitForSelector('[data-act="bn-start"]'); await act(page, 'bn-start'); await page.waitForSelector('#bn-line');
+    await act(page, 'bn-quit'); await page.waitForSelector('.cfm'); await page.locator('[data-cfm="ok"]').click(); await page.waitForSelector('[data-act="bn-start"]');
+    ok(await page.evaluate(() => { const g = window.__tp.bn.get('game'); return !g || g.done; }), 'bottleneck: abandoning ends the run');
     await ctx.close();
   }
 
