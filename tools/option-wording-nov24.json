@@ -1,0 +1,8 @@
+{
+  "DF-14": { "options": ["Average handle time", "Repeat calls within 7 days on the same issue", "Number of agents trained on the new call script", "Average talk time per call"] },
+  "DF-13": { "options": ["Late shipments rose to 9% in Q2 because the April WMS upgrade slowed picking.", "We will cut Dayton's late shipments from 9% to under 4% by adding cross-docking.", "Dayton's late shipments rose from 4% of orders in Q1 to 9% in Q2, costing about $80,000 in expedites.", "Shipping performance at Dayton is poor, and customers are unhappy about it."] },
+  "OV-15": { "options": ["Work only on B, since its RPN is higher", "Address A as well, because of its severity", "Average the two RPNs and act if over 100", "Wait for field data before acting on either"] },
+  "MS-27": { "options": ["When the specification has only one limit", "When the process is not in statistical control", "When the data are counts of defects, not measurements", "When the mean's distance from target must count"] },
+  "IM-07": { "options": ["Neither factor has much effect on the response", "Little or no interaction between the two factors", "There is a strong interaction between them", "The experiment needs more replicates to be sure"] },
+  "CO-05": { "options": ["Spindle 3's offset pushes subgroup means past the upper limit", "The ranges grow, so limits widen and shifts go unseen", "Nothing changes, since every subgroup averages the same four spindles", "The R chart goes out of control and the X-bar chart narrows"] }
+}

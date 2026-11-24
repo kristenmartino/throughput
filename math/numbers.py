@@ -45,7 +45,13 @@ def compute():
                     ppk=min((usl - mu) / (3 * so), (mu - lsl) / (3 * so)), cpm=(usl - lsl) / (6 * math.sqrt(sw ** 2 + (mu - t) ** 2)),
                     cpkWrongSide=(mu - lsl) / (3 * sw), zUw=(usl - mu) / sw, zU=zU, zL=zL, ppmU=ppmU, ppmL=ppmL, ppm=ppmU + ppmL, zSt=zU + 1.5, sigma3cpk=3 * cpk,
                     sixSigmaDpmo=(1 - phi(4.5)) * 1e6, cp133Ppm=2 * (1 - phi(4)) * 1e6)
-    return {f'{k}.{j}': v for k, d in N.items() for j, v in d.items()}
+    out = {f'{k}.{j}': v for k, d in N.items() for j, v in d.items()}
+    # Phase 2 numbers (math/phase2.py); loaded by path because the build runs Python with -I.
+    import importlib.util, os
+    spec = importlib.util.spec_from_file_location('phase2', os.path.join(os.path.dirname(os.path.abspath(__file__)), 'phase2.py'))
+    mod = importlib.util.module_from_spec(spec); spec.loader.exec_module(mod)
+    out.update(mod.compute2())
+    return out
 
 if __name__ == '__main__':
     print(json.dumps(compute()))
