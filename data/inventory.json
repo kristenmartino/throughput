@@ -1,0 +1,53 @@
+{
+ "rules": {
+  "weeks": 26,
+  "initOnHand": 300,
+  "holdCents": 50,
+  "orderCents": 20000,
+  "lostCents": 800,
+  "leadBefore": 2,
+  "leadAfter": 4,
+  "leadChangeWeek": 14,
+  "reviews": [
+   6,
+   12,
+   18
+  ],
+  "mean": 100,
+  "sd": 20,
+  "promoWeeks": [
+   9,
+   10
+  ],
+  "promoFactor": 1.8,
+  "z": 1.645
+ },
+ "demand": [
+  113,
+  73,
+  130,
+  101,
+  96,
+  90,
+  82,
+  86,
+  200,
+  212,
+  104,
+  74,
+  129,
+  115,
+  64,
+  79,
+  127,
+  90,
+  99,
+  105,
+  115,
+  45,
+  47,
+  85,
+  93,
+  96
+ ]
+}

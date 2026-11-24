@@ -79,6 +79,7 @@ function compute() {
       sixSigmaDpmo: (1 - phi(4.5)) * 1e6, cp133Ppm: 2 * (1 - phi(4)) * 1e6 }; }
   Object.assign(N, require('./phase2.js').compute2());
   N.mk = require('./mock.js').computeMock(N);   // held-out mock pool (Phase 2b)
+  Object.assign(N, require('./supply.js').computeSupply());   // supply chain decks (Phase 3)
   return N;
 }
 

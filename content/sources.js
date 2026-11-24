@@ -64,5 +64,23 @@ module.exports = {
   kaizen: ['Purdue Lean Six Sigma Online: Kaizen events (kaizen blitz)', 'https://www.purdue.edu/leansixsigmaonline/blog/kaizen-training-lean-six-sigma-approach', 'Relayed (search text)'],
   asqscore: ['ASQ: Exam results FAQ (550 of a possible 750)', 'https://www.asq.org/cert/faq/faq-exam-results', 'Read'],
   asqgrade: ['ASQ: Exam grading process (Modified Angoff, scaled scores)', 'https://www.asq.org/cert/faq/exam-grading-process', 'Read'],
-  asqexam: ['ASQ: Six Sigma Green Belt certification (exam format)', 'https://asq.org/cert/six-sigma-green-belt', 'Read']
+  asqexam: ['ASQ: Six Sigma Green Belt certification (exam format)', 'https://asq.org/cert/six-sigma-green-belt', 'Read'],
+  // Phase 3: supply chain (opened Nov 24, 2026 unless marked)
+  cscpecm: ['ASCM: CSCP Exam Content Manual v5.0, preview (main topics and weights)', 'https://www.ascm.org/globalassets/documents--files/learning--development/cscp-v5.0-ecm-preview-.pdf', 'Read'],
+  cscpoutline: ['ASCM: 2026 CSCP module content outline', 'https://www.ascm.org/globalassets/ascm_website_assets/docs/credentials/2026-cscp-module-content-outline.pdf', 'Read'],
+  mitEoq: ['MIT OCW 15.772J D-Lab: Supply Chains (Fall 2014), lecture 13: inventory and EOQ', 'https://ocw.mit.edu/courses/15-772j-d-lab-supply-chains-fall-2014/b0b41cc09a83ffa4cf1335ac65f5f9ab_MIT15_772JF14_Lec13.pdf', 'Read'],
+  little: ['Little (2011), Little\'s Law as Viewed on Its 50th Anniversary, Operations Research 59(3)', 'https://people.cs.umass.edu/~emery/classes/cmpsci691st/readings/OS/Littles-Law-50-Years-Later.pdf', 'Read'],
+  mitMrp: ['Gershwin, MIT OCW 2.854 Introduction to Manufacturing Systems (Fall 2016): Material Requirements Planning', 'https://ocw.mit.edu/courses/2-854-introduction-to-manufacturing-systems-fall-2016/4eec617bb52d64f4ea1bed6d9905bc00_MIT2_854F16_MatrialRequire.pdf', 'Read'],
+  ratedCap: ['Rated capacity = available time × utilization × efficiency (APICS dictionary wording, via CPIM study notes)', 'https://open-exam-prep.com/study-guides/cpim/detailed-schedules/capacity-types-safety-capacity-labor', 'Relayed (search text)'],
+  abcStev: ['Stevenson, Operations Management (11th ed.), the A-B-C approach (excerpt)', 'https://www.scribd.com/document/467769305/lectura-ABC-ingles', 'Relayed (search text)'],
+  ltVar: ['Bricker, University of Iowa: Reorder point (lead-time demand with variable lead time)', 'https://user.engineering.uiowa.edu/~dbricker/Lecture_Slides/Reorder_Point.pdf', 'Relayed (search text)'],
+  nistEs: ['NIST/SEMATECH e-Handbook 6.4.3.1: Single exponential smoothing', 'https://www.itl.nist.gov/div898/handbook/pmc/section4/pmc431.htm', 'Read'],
+  fisher: ['Fisher (1997), What Is the Right Supply Chain for Your Product?, Harvard Business Review', 'https://eclass.upatras.gr/modules/document/file.php/MECH1277/%CE%95%CE%A1%CE%93%CE%91%CE%A3%CE%99%CE%95%CE%A3-PAPERS%20%CE%91%CE%9D%CE%9F%CE%99%CE%9E%CE%97%202024/2-Right%20Supply%20Chain%20B.pdf', 'Relayed (search text)'],
+  ncsuFc: ['NC State SCM Initiative: Measuring forecast accuracy (MFE, MAD, tracking signal)', 'https://scm.ncsu.edu/scm-articles/article/measuring-forecast-accuracy-approaches-to-forecasting-a-tutorial', 'Relayed (search text)'],
+  icc: ['ICC: Incoterms rules (eleven three-letter trade terms; Incoterms 2020 in force from 1 January 2020)', 'https://iccwbo.org/business-solutions/incoterms-rules/', 'Read'],
+  incoList: ['CSO Ireland: Incoterms 2020 guidebook (seven any-mode rules, four sea rules; DPU replaces DAT)', 'https://www.cso.ie/en/methods/prices/importpriceindexsurvey/incotermsguidebook/', 'Relayed (search text)'],
+  dhlInco: ['DHL: Incoterms 2020 rules and changes from 2010 (CIP insurance at ICC A)', 'https://www.dhl.com/gb-en/home/our-divisions/global-forwarding/help-and-support/incoterms-2020.html', 'Relayed (search text)'],
+  scor: ['ASCM: SCOR Digital Standard, version 14.0 (2022), summary', 'https://scor.ascm.org/api/files/24', 'Read'],
+  ttsTtr: ['Simchi-Levi et al.: Find the Weak Link in Your Supply Chain (time to recover, time to survive; Ford case)', 'https://conference-board.org/blog/postdetail.cfm?post=3746', 'Relayed (search text)'],
+  willems: ['Willems (2001), Inventory Basics (from S. C. Graves\'s notes), MIT 15.762J materials', 'https://dspace.mit.edu/bitstream/handle/1721.1/71720/15-762j-spring-2005/contents/lecture-notes/inventory_notes.pdf', 'Read']
 };

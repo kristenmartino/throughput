@@ -64,6 +64,16 @@ function ok(c, m) { if (c) pass++; else { fails.push(m); console.log('FAIL', m);
     await fit(page, tag + ' beer play');
     await page.evaluate(() => { window.__tp.beer.put('game', { ts: Date.now(), seat: 2, orders: Array.from({ length: 32 }, (x, i) => (i * 7) % 23) }); window.__tp.host.go('beer', {}); });
     await page.waitForSelector('#beer-table'); await fit(page, tag + ' beer debrief');
+    // Supply chain lane and the inventory sim: intro, a review, the debrief
+    await page.goto(URL + '#lane-supply-chain'); await page.waitForSelector('.secrow'); await fit(page, tag + ' supply chain lane');
+    await page.goto(URL + '#inventory-sim'); await page.waitForSelector('#inv-q'); await fit(page, tag + ' inventory intro');
+    await page.fill('#inv-q', '300'); await page.fill('#inv-rop', '250'); await act(page, 'inv-start'); await page.waitForSelector('#inv-news'); await fit(page, tag + ' inventory review');
+    await act(page, 'inv-keep'); await page.waitForSelector('#inv-news'); await act(page, 'inv-keep'); await page.waitForSelector('#inv-news'); await act(page, 'inv-keep'); await page.waitForSelector('#inv-compare');
+    await fit(page, tag + ' inventory debrief');
+    await page.goto(URL + '#bottleneck-sim'); await page.waitForSelector('[data-act="bn-start"]'); await fit(page, tag + ' bottleneck intro');
+    await act(page, 'bn-start'); await page.waitForSelector('#bn-line'); await page.locator('[data-act="bn-buy"][data-id="3"]').click(); await page.waitForSelector('#bn-hist'); await fit(page, tag + ' bottleneck round');
+    for (let k = 0; k < 11; k++) await page.locator('[data-act="bn-buy"][data-id="-1"]').click();
+    await page.waitForSelector('#bn-compare'); await fit(page, tag + ' bottleneck debrief');
     // a Phase 2 lesson with every question answered, and the mock: question, review and result screens
     await page.goto(URL + '#lesson-an-6'); await page.waitForSelector('[data-act="pick"]');
     for (let i = 0; i < 4; i++) { const b = page.locator('[data-act="pick"]:not([disabled])').nth(0); if (await b.count()) await b.click(); }
@@ -93,14 +103,21 @@ function ok(c, m) { if (c) pass++; else { fails.push(m); console.log('FAIL', m);
     ok(/Throughput/.test(await page.locator('.brand').textContent()), 'brand reads Throughput');
     const lanes = await page.locator('.lanebtn').evaluateAll(b => b.map(x => ({ id: x.dataset.id, off: x.disabled, t: x.textContent })));
     ok(lanes.map(l => l.id).join() === 'quality,supply-chain,coo', 'lane order ' + lanes.map(l => l.id).join());
-    ok(lanes.filter(l => !l.off).map(l => l.id).join() === 'quality', 'only Quality and process improvement is active');
-    ok(lanes.filter(l => l.off).every(l => /Later$/.test(l.t)), 'Supply chain and COO show Later');
+    ok(lanes.filter(l => !l.off).map(l => l.id).join() === 'quality,supply-chain', 'Quality and Supply chain are active');
+    ok(lanes.filter(l => l.off).every(l => /Later$/.test(l.t)), 'COO shows Later');
     ok(/Quality and process improvement/.test(lanes[0].t) && /Supply chain/.test(lanes[1].t) && /Chief Operating Officer \(COO\)/.test(lanes[2].t), 'lane names');
     ok(lanes.every(l => !/\b(CDO|CRO|CPO|CCO)\b/.test(l.t)), 'no colliding bare acronyms in lane names');
     await page.locator('.lanebtn[data-id="coo"]').click({ force: true }); await page.waitForTimeout(100);
     ok(await page.locator('.lanebtn').count() === 3, 'a disabled lane does not open');
-    await page.goto(URL + '#lane-supply-chain'); await page.waitForSelector('.lanebtn');
+    await page.goto(URL + '#lane-coo'); await page.waitForSelector('.lanebtn');
     ok(await page.locator('.secrow').count() === 0, 'route to a Later lane falls back to the lane picker');
+    await page.goto(URL + '#lane-supply-chain'); await page.waitForSelector('.secrow');
+    const scs = await page.locator('.secrow').evaluateAll(r => r.map(x => x.id));
+    ok(scs.join() === 'supply-chain-inventory,supply-chain-bottleneck,supply-chain-beer,supply-chain-sc1,supply-chain-sc2,supply-chain-sc3,supply-chain-sc4,supply-chain-sc5,supply-chain-sc6,supply-chain-sc7,supply-chain-sc8', 'supply chain sections ' + scs.join());
+    const sct = await page.locator('.secrow').allTextContents();
+    ok([10, 10, 17, 19, 9, 17, 10, 8].every((n, i) => sct[i + 3].indexOf(n + '% of the exam') !== -1), 'ASCM module weights shown');
+    ok(/150 questions \(130 scored, 20 unscored pretest\), 3\.5 hours/.test(await page.locator('main').textContent()) && /pass at 300/.test(await page.locator('main').textContent()), 'CSCP exam facts shown');
+    ok(await page.locator('#supply-chain-beer a[href="#beer-game"]').count() === 1 && await page.locator('#supply-chain-inventory a[href="#inventory-sim"]').count() === 1, 'lane links the Beer Game and the inventory sim');
     await page.goto(URL); await page.waitForSelector('.lanebtn');
     await act(page, 'lane', 'quality'); await page.waitForSelector('.secrow');
     ok(/#lane-quality$/.test(page.url()), 'opening Quality sets #lane-quality');
@@ -130,8 +147,11 @@ function ok(c, m) { if (c) pass++; else { fails.push(m); console.log('FAIL', m);
     for (const id of ['overview', 'define', 'measure', 'analyze', 'improve', 'control']) ok(await page.locator('#quality-' + id + ' a[href="#deck-' + id + '"]').count() === 1, 'lane links the ' + id + ' deck');
     ok(await page.locator('#quality-mock a[href="#mock"]').count() === 1 && await page.locator('.secrow .soon').count() === 0, 'lane links the mock; no section shows "Phase n" any more');
     // Approved outlines: lessons / questions / cards per deck (Phase 1 and Phase 2 proposals)
-    const OUT = { overview: [6, 16, 16], define: [9, 30, 20], measure: [9, 30, 24], analyze: [9, 27, 22], improve: [7, 24, 20], control: [7, 23, 22] };
-    ok(BANK.decks.map(d => d.id).join() === 'overview,define,measure,analyze,improve,control', 'decks in BoK order');
+    const OUT = { overview: [6, 16, 16], define: [9, 30, 20], measure: [9, 30, 24], analyze: [9, 27, 22], improve: [7, 24, 20], control: [7, 23, 22],
+      // Phase 3: ASCM weights (lessons / questions / cards)
+      sc1: [5, 15, 11], sc2: [5, 15, 11], sc3: [8, 26, 19], sc4: [9, 29, 22], sc5: [4, 13, 10], sc6: [8, 25, 19], sc7: [5, 15, 11], sc8: [4, 12, 9] };
+    ok(BANK.decks.filter(d => d.lane === 'quality').map(d => d.id).join() === 'overview,define,measure,analyze,improve,control', 'quality decks in BoK order');
+    ok(BANK.decks.filter(d => d.lane === 'supply-chain').every(d => /^sc[1-8]$/.test(d.id)), 'supply chain decks are sc1..sc8');
     for (const d of BANK.decks) {
       await page.goto(URL + '#deck-' + d.id); await page.waitForSelector('.itemrow');
       ok(await page.locator('main .itemrow').count() === OUT[d.id][0], d.id + ': ' + OUT[d.id][0] + ' lessons listed');
@@ -144,7 +164,7 @@ function ok(c, m) { if (c) pass++; else { fails.push(m); console.log('FAIL', m);
         ok(n === d.questions.filter(q => q.lesson === l.id).length, l.id + ': its questions shown (' + n + ')');
         ok(await page.locator('.src li').count() === l.sources.length && l.sources.length > 0, l.id + ': sources listed');
         ok(await page.locator('figure.lfig svg.fig').count() === (l.figs || []).length, l.id + ': ' + (l.figs || []).length + ' figure(s) drawn');
-        if (['overview', 'analyze', 'improve', 'control'].includes(d.id)) {   // Phase 2: every keyed answer is marked right in the page
+        if (['overview', 'analyze', 'improve', 'control'].includes(d.id) || d.lane === 'supply-chain') {   // Phase 2 and 3: every keyed answer is marked right in the page
           for (const q of d.questions.filter(x => x.lesson === l.id)) {
             await page.locator('[data-act="pick"][data-id="' + q.id + '"][data-j="' + q.answer + '"]').click();
             ok(/Right/.test(await page.locator('#q-' + q.id.toLowerCase() + ' .verdict').textContent()), q.id + ': keyed answer marked right');
@@ -208,8 +228,8 @@ function ok(c, m) { if (c) pass++; else { fails.push(m); console.log('FAIL', m);
     await page.locator('[data-act="beer-seat"][data-id="3"]').click(); await act(page, 'beer-start'); await page.waitForSelector('#beer-qty');
     await act(page, 'beer-quit'); await page.locator('[data-cfm="ok"]').click(); await page.waitForSelector('[data-act="beer-seat"]');
     ok(!(await page.evaluate(() => { const g = window.__tp.beer.get('game'); return g && !g.done; })), 'abandoning ends the game');
-    await page.goto(URL); await page.waitForSelector('.itemrow[href="#beer-game"]');
-    ok(/Draft/.test(await page.locator('.itemrow[href="#beer-game"]').textContent()), 'home lists the Beer Game as Draft under Simulations');
+    await page.goto(URL + '#lane-supply-chain'); await page.waitForSelector('.itemrow[href="#beer-game"]');
+    ok(/Draft/.test(await page.locator('.itemrow[href="#beer-game"]').textContent()), 'the Supply chain lane lists the Beer Game as Draft');
     await ctx.close();
   }
 
@@ -310,6 +330,86 @@ function ok(c, m) { if (c) pass++; else { fails.push(m); console.log('FAIL', m);
     await ctx.close();
   }
 
+  // ---- 2e. inventory sim (Phase 3)
+  {
+    const IE = require('./math/inventory.js'), INVD = require('./data/inventory.json');
+    const { ctx, page } = await newPage();
+    const B = BANK.inventory;
+    ok(B && B.data.demand.length === 26 && B.textbook.length === 4 && B.textbook[0].q === 283, 'inventory: 26 weeks of demand and a textbook policy with EOQ 283');
+    ok(B.lesson.every(p => !/\{[A-Za-z0-9]+\}/.test(p)) && B.briefing.concat(B.news).every(p => !/\{[A-Za-z0-9]+\}/.test(p)), 'inventory: every placeholder filled');
+    await page.goto(URL + '#inventory-sim'); await page.waitForSelector('#inv-q');
+    await page.fill('#inv-q', ''); await act(page, 'inv-start'); await page.waitForTimeout(150);
+    ok(await page.locator('#inv-news').count() === 0 && await page.evaluate(() => !window.__tp.inv.get('game')), 'inventory: blank Q is refused');
+    await page.fill('#inv-q', '-5'); await page.fill('#inv-rop', '100'); await act(page, 'inv-start'); await page.waitForTimeout(150);
+    ok(await page.locator('#inv-news').count() === 0, 'inventory: negative Q is refused');
+    // play the textbook policy through the page; the debrief must match the engine and the build's reference
+    const tb = B.textbook;
+    await page.fill('#inv-q', String(tb[0].q)); await page.fill('#inv-rop', String(tb[0].rop)); await act(page, 'inv-start'); await page.waitForSelector('#inv-news');
+    ok(/After week 6/.test(await page.locator('main').textContent()) && /promotion in weeks 9 and 10/.test(await page.locator('#inv-news').textContent()), 'inventory: review 1 after week 6 with the promotion news');
+    const r6 = IE.play(INVD, [tb[0]]);
+    ok((await page.locator('#inv-status .v').first().textContent()) === String(r6.h.onHand[5]), 'inventory: on hand after week 6 matches the engine (' + r6.h.onHand[5] + ')');
+    ok(await page.locator('#inv-table tbody tr').count() === 6, 'inventory: six recent weeks shown');
+    await page.reload(); await page.waitForSelector('#inv-news');
+    ok(/Review 1 of 3/.test(await page.locator('.playtop .meta').textContent()), 'inventory: a reload returns to the same review');
+    for (let p = 1; p < 4; p++) {
+      await page.fill('#inv-q', String(tb[p].q)); await page.fill('#inv-rop', String(tb[p].rop)); await act(page, 'inv-next');
+      await page.waitForSelector(p < 3 ? '#inv-news' : '#inv-compare');
+      if (p === 1) ok(/week 14 onward, delivery takes 4 weeks/.test(await page.locator('#inv-news').textContent()), 'inventory: review 2 brings the lead-time news');
+    }
+    const tbs = IE.stats(IE.play(INVD, tb), INVD), cents = c => '$' + (c / 100).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+    const sc = await page.locator('#inv-score .v').allTextContents();
+    ok(sc[0] === cents(tbs.total) && sc[1] === (100 * tbs.fill).toFixed(1) + '%', 'inventory: debrief total and fill match the engine (' + sc.slice(0, 2).join(' ') + ')');
+    const rows = await page.locator('#inv-compare tbody tr').allTextContents();
+    ok(rows.length === 4 && rows[0].indexOf(cents(tbs.total)) !== -1 && rows[1].indexOf(cents(B.ref.textbook.total)) !== -1 && rows[3].indexOf(cents(B.hindsight.total)) !== -1, 'inventory: comparison table has you, textbook, unchanged and hindsight');
+    ok(B.ref.unchanged.total > B.ref.textbook.total && B.hindsight.total <= B.ref.textbook.total, 'inventory: unchanged costs more than textbook; hindsight costs no more');
+    ok(await page.locator('svg.fig polyline').count() === 2 && await page.locator('svg.fig').getAttribute('aria-label') !== null, 'inventory: chart with on hand and reorder point lines');
+    ok(await page.evaluate(() => window.__tp.inv.get('best').total) === tbs.total, 'inventory: best total saved');
+    await page.goto(URL + '#lane-supply-chain'); await page.waitForSelector('#supply-chain-inventory');
+    ok(new RegExp('best ' + cents(tbs.total).replace(/[$.]/g, '\\$&')).test(await page.locator('#supply-chain-inventory').textContent()), 'inventory: the lane shows the best total');
+    // keep button carries the settings forward; abandon ends the game
+    await page.goto(URL + '#inventory-sim'); await page.waitForSelector('#inv-q'); await page.fill('#inv-q', '400'); await page.fill('#inv-rop', '300'); await act(page, 'inv-start'); await page.waitForSelector('#inv-news');
+    await act(page, 'inv-keep'); await page.waitForSelector('#inv-news');
+    ok(JSON.stringify(await page.evaluate(() => window.__tp.inv.get('game').dec)) === JSON.stringify([{ q: 400, rop: 300 }, { q: 400, rop: 300 }]), 'inventory: Keep repeats the last settings');
+    await act(page, 'inv-quit'); await page.waitForSelector('.cfm'); await page.locator('[data-cfm="ok"]').click(); await page.waitForSelector('#inv-q');
+    ok(await page.evaluate(() => { const g = window.__tp.inv.get('game'); return !g || g.done; }), 'inventory: abandoning ends the game');
+    await ctx.close();
+  }
+
+  // ---- 2f. bottleneck line (Phase 3)
+  {
+    const BNE = require('./math/bottleneck.js'), R = BNE.RULES;
+    const { ctx, page } = await newPage(), B = BANK.bottleneck;
+    ok(B && B.best.searched === 58422 && B.best.release === 'rope', 'bottleneck: best plan found among 58,422 and it paces release');
+    ok(B.lesson.concat(B.briefing, [B.blurb]).every(p => !/\{[A-Za-z0-9]+\}/.test(p)), 'bottleneck: every placeholder filled');
+    await page.goto(URL + '#lane-supply-chain'); await page.waitForSelector('#supply-chain-bottleneck');
+    ok(await page.locator('#supply-chain-bottleneck a[href="#bottleneck-sim"]').count() === 1, 'lane links the bottleneck sim');
+    await page.goto(URL + '#bottleneck-sim'); await page.waitForSelector('[data-act="bn-start"]');
+    ok(await page.locator('[data-act="bn-rel"][data-id="rope"]').getAttribute('aria-pressed') === 'true', 'bottleneck: pacing release chosen by default');
+    // play the best plan through the page
+    const bp = B.best;
+    if (bp.release === 'push') await page.locator('[data-act="bn-rel"][data-id="push"]').click();
+    await act(page, 'bn-start'); await page.waitForSelector('#bn-line');
+    ok(/slowest/.test(await page.locator('#bn-line tbody tr').nth(3).textContent()), 'bottleneck: Assemble marked slowest at the start');
+    for (let t = 0; t < R.rounds; t++) {
+      await page.locator('[data-act="bn-buy"][data-id="' + bp.buys[t] + '"]').click();
+      await page.waitForSelector(t < R.rounds - 1 ? '#bn-hist' : '#bn-compare');
+      if (t === 0) { ok(await page.locator('#bn-hist tbody tr').count() === 1, 'bottleneck: one round in the history'); await page.reload(); await page.waitForSelector('#bn-line'); ok(/Round 2 of 12/.test(await page.locator('.playtop .meta').textContent()), 'bottleneck: a reload keeps the run'); }
+      if (t === 2) ok(await page.locator('[data-act="bn-buy"][data-id="0"]').isDisabled(), 'bottleneck: purchases disabled once the budget is spent');
+    }
+    const s = BNE.stats(BNE.play(bp)), usd = d => (d < 0 ? '−$' : '$') + Math.abs(d).toLocaleString('en-US');
+    const sc = await page.locator('#bn-score .v').allTextContents();
+    ok(sc[0] === usd(s.profit) && sc[0] === usd(bp.profit), 'bottleneck: debrief profit matches the best plan (' + sc[0] + ')');
+    const rows = await page.locator('#bn-compare tbody tr').allTextContents();
+    ok(rows.length === 4 && rows[2].indexOf(usd(B.ref.rope.profit)) !== -1 && rows[3].indexOf(usd(B.ref.push.profit)) !== -1, 'bottleneck: comparison has you, best, pace and push');
+    ok(B.ref.push.profit < B.ref.rope.profit && B.ref.push.out === B.ref.rope.out, 'bottleneck: push sells the same and earns less than pacing');
+    ok(await page.evaluate(() => window.__tp.bn.get('best').profit) === s.profit, 'bottleneck: best profit saved');
+    // abandon
+    await act(page, 'bn-again'); await page.waitForSelector('[data-act="bn-start"]'); await act(page, 'bn-start'); await page.waitForSelector('#bn-line');
+    await act(page, 'bn-quit'); await page.waitForSelector('.cfm'); await page.locator('[data-cfm="ok"]').click(); await page.waitForSelector('[data-act="bn-start"]');
+    ok(await page.evaluate(() => { const g = window.__tp.bn.get('game'); return !g || g.done; }), 'bottleneck: abandoning ends the run');
+    await ctx.close();
+  }
+
   // ---- 3. idle-write check (study-kit's method): a database that returns keys sorted; no writes once idle
   {
     const STORE = {};
@@ -327,6 +427,7 @@ function ok(c, m) { if (c) pass++; else { fails.push(m); console.log('FAIL', m);
     await act(page, 'lane', 'quality'); await page.waitForSelector('.secrow');
     await page.goto(URL + '#lesson-df-1'); await page.waitForSelector('[data-act="pick"]'); await page.locator('[data-act="pick"][data-id="DF-01"][data-j="1"]').click();
     await page.goto(URL + '#beer-game'); await page.waitForSelector('[data-act="beer-start"]'); await act(page, 'beer-start'); await page.waitForSelector('#beer-qty'); await act(page, 'beer-order'); await page.waitForTimeout(200);
+    await page.goto(URL + '#inventory-sim'); await page.waitForSelector('#inv-q'); await page.fill('#inv-q', '300'); await page.fill('#inv-rop', '250'); await act(page, 'inv-start'); await page.waitForSelector('#inv-news');
     await page.goto(URL + '#mock'); await page.waitForSelector('[data-act="mock-start"]'); await act(page, 'mock-start'); await page.waitForSelector('#mq'); await page.locator('[data-act="mock-pick"]').first().click();
     await page.waitForTimeout(5000);   // stays on the mock screen with its clock ticking
     const n = await page.evaluate(() => Object.assign({}, window.__sets));
@@ -335,7 +436,9 @@ function ok(c, m) { if (c) pass++; else { fails.push(m); console.log('FAIL', m);
     ok((n['data/users/u_loop/prefs'] || 0) >= 1, 'idle-write: prefs document written (' + JSON.stringify(n) + ')');
     ok(JSON.stringify(n2) === JSON.stringify(n), 'idle-write: no further writes once idle (' + JSON.stringify(n) + ' then ' + JSON.stringify(n2) + ')');
     ok(!n['data/users/u_loop/craft'] && !n['data/users/u_loop/sims'], 'idle-write: empty Craft and Simulations documents are never written');
-    ok((n['data/users/u_loop/decks'] || 0) >= 1 && (n['data/users/u_loop/beer'] || 0) >= 1 && (n['data/users/u_loop/mock'] || 0) >= 1, 'idle-write: decks, Beer Game and mock documents written');
+    ok((n['data/users/u_loop/decks'] || 0) >= 1 && (n['data/users/u_loop/beer'] || 0) >= 1 && (n['data/users/u_loop/mock'] || 0) >= 1 && (n['data/users/u_loop/inv'] || 0) >= 1, 'idle-write: decks, Beer Game, mock and inventory documents written');
+    const iv = await page.evaluate(() => window.__docs['data/users/u_loop/inv']);
+    ok(iv && iv.inv.game && iv.inv.game.dec.length === 1 && iv.inv.game.dec[0].q === 300, 'idle-write: the inventory game in progress is in the account');
     const md = await page.evaluate(() => window.__docs['data/users/u_loop/mock']);
     ok(md && md.mock.run && md.mock.run.ids.length === 110 && Object.keys(md.mock.run.picks).length === 1, 'idle-write: the mock in progress is in the account');
     const dd = await page.evaluate(() => window.__docs['data/users/u_loop/decks']), bd = await page.evaluate(() => window.__docs['data/users/u_loop/beer']);
@@ -345,6 +448,7 @@ function ok(c, m) { if (c) pass++; else { fails.push(m); console.log('FAIL', m);
     // a second device: the stored copy loads, and loading it writes nothing
     await page.evaluate(() => localStorage.clear()); await page.goto(URL); await page.reload(); await page.waitForSelector('.lanebtn'); await page.waitForTimeout(3000);
     ok(/last visited/.test(await page.locator('.lanebtn[data-id="quality"]').textContent()), 'second device: last lane comes from the account');
+    await page.goto(URL + '#lane-supply-chain'); await page.waitForSelector('.itemrow[href="#beer-game"]'); await page.waitForTimeout(500);
     ok(/In progress · Wholesaler/.test(await page.locator('.itemrow[href="#beer-game"]').textContent()), 'second device: the game in progress comes from the account');
     await page.goto(URL + '#lane-quality'); await page.waitForSelector('#quality-mock'); await page.waitForTimeout(1500);
     ok(/In progress · 4:1\d:\d\d left · 1 of 110 answered/.test(await page.locator('#quality-mock').textContent()), 'second device: the mock in progress comes from the account (' + await page.locator('#quality-mock').textContent() + ')');

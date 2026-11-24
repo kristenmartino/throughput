@@ -51,6 +51,9 @@ def compute():
     spec = importlib.util.spec_from_file_location('phase2', os.path.join(os.path.dirname(os.path.abspath(__file__)), 'phase2.py'))
     mod = importlib.util.module_from_spec(spec); spec.loader.exec_module(mod)
     out.update(mod.compute2())
+    spec = importlib.util.spec_from_file_location('supply', os.path.join(os.path.dirname(os.path.abspath(__file__)), 'supply.py'))
+    sup = importlib.util.module_from_spec(spec); spec.loader.exec_module(sup)
+    out.update(sup.compute_supply())
     return out
 
 if __name__ == '__main__':

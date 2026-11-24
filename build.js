@@ -23,7 +23,10 @@ for (const ln of L.lanes) {
   if (/\b(CDO|CRO|CPO|CCO)\b/.test(ln.name)) errors.push('lane ' + ln.id + ': colliding bare acronym in the name');
 }
 if (laneIds.join() !== 'quality,supply-chain,coo') errors.push('lanes are quality, supply-chain, coo in that order');
-if (L.lanes.filter(l => l.active).map(l => l.id).join() !== 'quality') errors.push('Phase 1: only the quality lane is active');
+if (L.lanes.filter(l => l.active).map(l => l.id).join() !== 'quality,supply-chain') errors.push('Phase 3: the quality and supply-chain lanes are active');
+{ const w = (L.sections['supply-chain'] || []).filter(s => s.kind === 'Deck').map(s => s.weight);   // ASCM CSCP ECM v5.0 weights (Read, Nov 24)
+  if (w.join() !== '10,10,17,19,9,17,10,8') errors.push('supply-chain decks must carry the ASCM weights 10,10,17,19,9,17,10,8 (got ' + w.join() + ')'); }
+for (const s of L.sections['supply-chain'] || []) if (s.kind === 'Simulation' && !/^#[a-z0-9-]+$/.test(s.route || '')) errors.push('section supply-chain-' + s.id + ': a simulation needs a route');
 for (const lane in L.sections) {
   if (laneIds.indexOf(lane) === -1) errors.push('sections for unknown lane ' + lane);
   for (const s of L.sections[lane]) {
@@ -38,15 +41,22 @@ for (const lane in L.sections) {
 
 // ---- Decks (Phase 1: Define and Measure; Phase 2: Overview, Analyze, Improve, Control; outlines approved Nov 24)
 const FL = NUM.flat(NUM.compute()), used = new Map();
-const fill = (s, w) => { try { String(s).replace(/\{\{([a-z0-9.]+)(?:\|([^}]+))?\}\}/gi, (m, k, f) => { used.set(k + '|' + (f || '0'), [k, f || '0']); return ''; }); return NUM.fill(s, FL); } catch (e) { errors.push(w + ': ' + e.message); return s; } };
+const fill = (s, w) => { try { String(s).replace(/\{\{([a-z0-9.]+)(?:\|([^}]+))?\}\}/gi, (m, k, f) => { used.set(k + '|' + (f || '0'), [k, f || '0']); if (!f && typeof FL[k] === 'number' && !Number.isInteger(FL[k])) errors.push(w + ': {{' + k + '}} is ' + FL[k] + ' but has no format, so it prints rounded to a whole number'); return ''; }); return NUM.fill(s, FL); } catch (e) { errors.push(w + ': ' + e.message); return s; } };
 const LEVELS = ['Remember', 'Understand', 'Apply', 'Analyze', 'Evaluate', 'Create'];
 const OUTLINE = { overview: { counts: [3, 3, 3, 2, 2, 3], cards: 16 }, define: { counts: [3, 3, 2, 4, 4, 4, 3, 4, 3], cards: 20 }, measure: { counts: [2, 4, 2, 4, 3, 4, 3, 2, 6], cards: 24 },
-  analyze: { counts: [3, 3, 3, 4, 4, 3, 3, 2, 2], cards: 22 }, improve: { counts: [4, 4, 3, 3, 3, 4, 3], cards: 20 }, control: { counts: [4, 2, 5, 4, 3, 3, 2], cards: 22 } };
+  analyze: { counts: [3, 3, 3, 4, 4, 3, 3, 2, 2], cards: 22 }, improve: { counts: [4, 4, 3, 3, 3, 4, 3], cards: 20 }, control: { counts: [4, 2, 5, 4, 3, 3, 2], cards: 22 },
+  // Supply chain (Phase 3, approved Nov 24): questions, lessons and cards in ASCM's module weights (150 / 48 / 112 by
+  // largest remainder, ties to the heavier module); lessons follow the sections of ASCM's 2026 module outline.
+  sc1: { counts: [3, 3, 2, 4, 3], cards: 11 }, sc2: { counts: [3, 4, 3, 3, 2], cards: 11 }, sc3: { counts: [3, 4, 3, 3, 3, 4, 3, 3], cards: 19 },
+  sc4: { counts: [3, 4, 3, 3, 3, 4, 3, 3, 3], cards: 22 }, sc5: { counts: [3, 4, 3, 3], cards: 10 }, sc6: { counts: [3, 4, 3, 3, 3, 3, 3, 3], cards: 19 },
+  sc7: { counts: [3, 3, 3, 3, 3], cards: 11 }, sc8: { counts: [3, 3, 3, 3], cards: 9 } };
+{ const t = k => ['sc1', 'sc2', 'sc3', 'sc4', 'sc5', 'sc6', 'sc7', 'sc8'].map(id => k === 'q' ? OUTLINE[id].counts.reduce((a, b) => a + b, 0) : k === 'l' ? OUTLINE[id].counts.length : OUTLINE[id].cards);
+  if (t('q').join() !== '15,15,26,29,13,25,15,12' || t('l').join() !== '5,5,8,9,4,8,5,4' || t('c').join() !== '11,11,19,22,10,19,11,9') errors.push('supply chain outline must follow the ASCM weights: questions ' + t('q') + ', lessons ' + t('l') + ', cards ' + t('c')); }
 const FIGS = require('./math/figs.js'), NUMS = NUM.compute();
 const words = s => String(s || '').trim().split(/\s+/).filter(Boolean).length;
-const DECKS = ['overview', 'define', 'measure', 'analyze', 'improve', 'control'].filter(id => fs.existsSync(path.join(here, 'content', id + '.js'))).map(id => require('./content/' + id + '.js')).map(src => {
-  const d = src.deck, o = OUTLINE[d.id], w = 'deck ' + d.id;
-  if (!o || sectionIds.indexOf('quality-' + d.id) === -1) errors.push(w + ': no section quality-' + d.id);
+const DECKS = ['overview', 'define', 'measure', 'analyze', 'improve', 'control', 'sc4', 'sc1', 'sc5', 'sc2', 'sc3', 'sc7', 'sc6', 'sc8'].filter(id => fs.existsSync(path.join(here, 'content', id + '.js'))).map(id => require('./content/' + id + '.js')).map(src => {
+  const d = src.deck, o = OUTLINE[d.id], w = 'deck ' + d.id, lane = d.lane || 'quality';
+  if (!o || sectionIds.indexOf(lane + '-' + d.id) === -1) errors.push(w + ': no section ' + lane + '-' + d.id);
   if (!ID.test(d.id)) errors.push(w + ': bad id');
   claim('deck-' + d.id, w);
   const lessons = src.lessons.map((l, i) => {
@@ -91,7 +101,9 @@ const DECKS = ['overview', 'define', 'measure', 'analyze', 'improve', 'control']
     return { id: c.id, front: fill(c.front, cw), back: fill(c.back, cw), status: c.status === undefined ? 'Draft' : c.status };
   });
   if (o && cards.length !== o.cards) errors.push(w + ': ' + o.cards + ' cards in the approved outline, got ' + cards.length);
-  return { id: d.id, title: d.title, bok: d.bok, scored: d.scored, lessons, questions, cards, keyPositions: pos };
+  const ln = L.lanes.find(x => x.id === lane), sec = (L.sections[lane] || []).find(x => x.id === d.id) || {};
+  return { id: d.id, title: d.title, bok: d.bok, scored: d.scored, weight: sec.weight, lane, laneShort: ln ? ln.short : lane,
+    bokLabel: lane === 'quality' ? 'ASQ BoK section' : 'CSCP module', lessons, questions, cards, keyPositions: pos };
 });
 for (const dk of DECKS) for (const t of [].concat(...dk.lessons.map(l => l.body.concat(l.figs.map(g => g.svg))), ...dk.questions.map(q => [q.stem, q.why].concat(q.options, Object.values(q.whyNot))), ...dk.cards.map(c => [c.front, c.back])))
   if (/\{\{|NaN|undefined|Infinity/.test(t)) errors.push('unfilled or bad number in: ' + t.slice(0, 80));
@@ -156,6 +168,56 @@ const BEER = require('./content/beer.js');
 for (const p of BEER.lesson) if (!/\((Read|Relayed|Inferred|Measured)/.test(p)) errors.push('beer lesson: every paragraph needs a tier tag');
 claim(BEER.id, 'game');
 
+// ---- Bottleneck line (Phase 3): engine math/bottleneck.js, checked against math/bottleneck.py above. The lesson's
+// claims are asserted here, so a change to the rules that breaks one stops the build.
+const BN = require('./math/bottleneck.js'), BNC = require('./content/bottleneck.js');
+claim(BNC.id, 'game');
+const bottleneck = (() => {
+  const R = BN.RULES, best = mc.bottleneck.best, none = Array(R.rounds).fill(-1), pad = a => a.concat(Array(R.rounds - a.length).fill(-1));
+  const run = p => BN.stats(BN.play(p)), push = run({ release: 'push', buys: none }), rope = run({ release: 'rope', buys: none });
+  const minCap = Math.min.apply(null, R.caps), c0 = R.caps.indexOf(minCap), after = R.caps.slice(); after[c0] += R.step;
+  const c1cap = Math.min.apply(null, after), c1 = after.indexOf(c1cap), waste = 0, wasted = run({ release: 'rope', buys: pad([waste, waste, waste]) });
+  const usd = d => (d < 0 ? '−$' : '$') + Math.abs(d).toLocaleString('en-US');
+  const planText = p => (p.release === 'rope' ? 'release at the constraint\'s pace' : 'push') + (p.buys.some(b => b >= 0) ? ', then buy ' + p.buys.map((b, t) => b >= 0 ? R.names[b] + ' in round ' + (t + 1) : null).filter(Boolean).join(', ') : ', and buy nothing');
+  if (push.out !== rope.out) errors.push('bottleneck lesson: push and pacing should sell the same with no purchases');
+  if (!(push.profit < rope.profit) || !(push.endWip > rope.endWip)) errors.push('bottleneck lesson: push should end with more WIP and less profit');
+  if (wasted.out !== rope.out || wasted.profit !== rope.profit - 3 * R.stepCost || waste === c0) errors.push('bottleneck lesson: steps at a non-constraint should change nothing but cost');
+  if (best.release !== 'rope' || !best.buys.some(b => b === c0)) errors.push('bottleneck lesson: the best plan should pace release and elevate the constraint');
+  const V = { rounds: R.rounds, budget: usd(R.budget), stations: R.names.join(', '), init: R.init, caps: R.names.map((nm, i) => nm + ' ' + R.caps[i]).join(', '),
+    margin: usd(R.margin), wipCost: usd(R.wipCost), step: R.step, stepCost: usd(R.stepCost), cap0: R.caps[0], maxBuys: Math.floor(R.budget / R.stepCost),
+    c0name: R.names[c0], c0cap: minCap, c0after: after[c0], c1name: R.names[c1], c1cap: c1cap, c4name: R.names[waste],
+    pushOut: push.out, pushEndWip: push.endWip, ropeEndWip: rope.endWip, pushProfit: usd(push.profit), ropeProfit: usd(rope.profit),
+    ropeWip: rope.avgWip.toFixed(1), ropeLead: rope.lead.toFixed(1), pushLead: push.lead.toFixed(1), wasted: usd(rope.profit - wasted.profit),
+    searched: best.searched.toLocaleString('en-US'), bestPlan: planText(best), bestProfit: usd(best.profit) };
+  const f = (t, w) => t.replace(/\{([A-Za-z0-9]+)\}/g, (m, k) => { if (!(k in V)) { errors.push('bottleneck ' + w + ': unknown {' + k + '}'); return m; } return String(V[k]); });
+  BNC.lesson.forEach((p, i) => { if (!/\((Read|Relayed|Inferred|Measured|Computed)/.test(p)) errors.push('bottleneck lesson ' + (i + 1) + ': needs a tier tag'); });
+  return { id: BNC.id, title: BNC.title, status: BNC.status, blurb: f(BNC.blurb, 'blurb'), briefing: BNC.briefing.map((p, i) => f(p, 'briefing ' + i)),
+    lesson: BNC.lesson.map((p, i) => f(p, 'lesson ' + i)), sources: BNC.sources.map(k => SRC[k]), best, bestText: planText(best), ref: { push, rope } };
+})();
+
+// ---- Inventory sim (Phase 3): rules and demand in data/inventory.json; engine math/inventory.js, checked against
+// math/inventory.py above. {key} placeholders in its text come from the checked engine.
+const INVD = require('./data/inventory.json'), IE = require('./math/inventory.js'), INVC = require('./content/inventory.js');
+claim(INVC.id, 'game');
+const inventory = (() => {
+  const R = INVD.rules, tb = mc.inventory.textbook, hs = mc.inventory.hindsight, nc = [tb[0], tb[0], tb[0], tb[0]];
+  const S1 = IE.stats(IE.play(INVD, tb), INVD), S0 = IE.stats(IE.play(INVD, nc), INVD);
+  const money = c => '$' + (c / 100).toLocaleString('en-US', { minimumFractionDigits: c % 100 ? 2 : 0, maximumFractionDigits: 2 });
+  const pct = f => (100 * f).toFixed(1) + '%';
+  const V = { mean: R.mean, sd: R.sd, leadBefore: R.leadBefore, leadAfter: R.leadAfter, initOnHand: R.initOnHand, z: R.z,
+    hold: (R.holdCents / 100).toFixed(2), order: R.orderCents / 100, lost: R.lostCents / 100, holdD: (R.holdCents / 100).toFixed(2), orderD: R.orderCents / 100,
+    r1: R.reviews[0], r2: R.reviews[1], r3: R.reviews[2], eoq: tb[0].q, rop0: tb[0].rop, rop1: tb[1].rop, rop2: tb[2].rop,
+    tbTotal: money(S1.total), tbFill: pct(S1.fill), ncTotal: money(S0.total), ncFill: pct(S0.fill),
+    ncHoldSave: money(S1.hold - S0.hold), ncLostCost: money(S0.lost), ncOrdSave: money(S1.order - S0.order), ncNet: money(S1.total - S0.total), ncLostUnits: S0.lostUnits, hsQ: hs.q, hsRop: hs.rop, hsTotal: money(hs.total) };
+  const f = (t, w) => t.replace(/\{([A-Za-z0-9]+)\}/g, (m, k) => { if (!(k in V)) { errors.push('inventory ' + w + ': unknown {' + k + '}'); return m; } return String(V[k]); });
+  INVC.lesson.forEach((p, i) => { if (!/\((Read|Relayed|Inferred|Measured|Computed)/.test(p)) errors.push('inventory lesson ' + (i + 1) + ': needs a tier tag'); });
+  if (S0.total <= S1.total) errors.push('inventory: the textbook policy should beat the unchanged one on this demand');
+  if (INVC.news.length !== R.reviews.length) errors.push('inventory: one news item per review');
+  return { id: INVC.id, title: INVC.title, status: INVC.status, blurb: f(INVC.blurb, 'blurb'), briefing: INVC.briefing.map((p, i) => f(p, 'briefing ' + i)),
+    news: INVC.news.map((p, i) => f(p, 'news ' + i)), lesson: INVC.lesson.map((p, i) => f(p, 'lesson ' + i)), sources: INVC.sources.map(k => SRC[k]),
+    data: INVD, textbook: tb, hindsight: hs, ref: { textbook: S1, unchanged: S0 } };
+})();
+
 // Engines: no Craft or Simulations content yet. Craft packets will use ids TP-n, runs TPN-n, role-plays TPL-n.
 const craft = loadCraft([], { dir: path.join(here, 'build', 'craft'), idPrefix: 'TP', takenIds: new Set() });
 errors.push(...craft.errors);
@@ -167,7 +229,7 @@ const PUB = path.join(here, 'published-ids.json');
 const pub = JSON.parse(fs.readFileSync(PUB, 'utf8'));
 const now = { lanes: laneIds, sections: sectionIds, craft: craft.ids, sims: sims.ids,
   lessons: [].concat(...DECKS.map(d => d.lessons.map(l => l.id))), questions: [].concat(...DECKS.map(d => d.questions.map(q => q.id))),
-  cards: [].concat(...DECKS.map(d => d.cards.map(c => c.id))), decks: DECKS.map(d => d.id), games: [BEER.id], mocks: [MOCK.id], mockQuestions: [].concat(...Object.values(MOCK.pool).map(l => l.map(q => q.id))) };
+  cards: [].concat(...DECKS.map(d => d.cards.map(c => c.id))), decks: DECKS.map(d => d.id), games: [BEER.id, INVC.id, BNC.id], mocks: [MOCK.id], mockQuestions: [].concat(...Object.values(MOCK.pool).map(l => l.map(q => q.id))) };
 for (const k of Object.keys(pub)) if (k !== 'note' && !(k in now)) errors.push('published-ids.json has an unknown kind ' + k);
 for (const k of Object.keys(now)) for (const id of (pub[k] || [])) if (now[k].indexOf(id) === -1) errors.push('published ' + k + ' id ' + id + ' is missing; links depend on it');
 if (errors.length) { console.error(errors.join('\n')); process.exit(1); }
@@ -184,17 +246,17 @@ const ref = { average: mc.beer.all_average, benchSeat: mc.beer.bench_in_seat }; 
 const BG = require('./math/beer.js');
 const beer = { id: BEER.id, title: BEER.title, status: BEER.status, blurb: BEER.blurb, briefing: BEER.briefing, lesson: BEER.lesson, sources: BEER.sources.map(k => SRC[k]),
   refTeam2: { average: BG.stats(ref.average).team2, bench: BG.stats(mc.beer.all_bench).team2 }, benchAll2: BG.stats(mc.beer.all_bench).stages.map(s => s.cost2), benchTeam2: ref.benchSeat.map(g => BG.stats(g).team2) };
-const bank = { lanes: L.lanes, sections: L.sections, exam: L.exam, craft: craft.packets, runs: sims.runs, roleplays: sims.roleplays, kitVersion, decks: DECKS, beer, mock: MOCK };
+const bank = { lanes: L.lanes, sections: L.sections, exam: L.exam, craft: craft.packets, runs: sims.runs, roleplays: sims.roleplays, kitVersion, decks: DECKS, beer, inventory, bottleneck, mock: MOCK };
 const LS = String.fromCharCode(0x2028), PS = String.fromCharCode(0x2029);
 const json = JSON.stringify(bank).replace(/<\//g, '<\\/').split(LS).join('\\u2028').split(PS).join('\\u2029');
 const tpl = read('index.src.html');
-for (const t of ['__BANK__', '__STUDY_KIT__', '__SHELL_CSS__', '__KIT_CSS__', '__BEER_ENGINE__']) if (tpl.split(t).length !== 2) { console.error('template must contain one ' + t); process.exit(1); }
+for (const t of ['__BANK__', '__STUDY_KIT__', '__SHELL_CSS__', '__KIT_CSS__', '__BEER_ENGINE__', '__INV_ENGINE__', '__BN_ENGINE__']) if (tpl.split(t).length !== 2) { console.error('template must contain one ' + t); process.exit(1); }
 const kit = read('vendor/study-kit/study-kit.js').replace(/<\//g, '<\\/');
 const out = tpl.replace('__SHELL_CSS__', () => read('vendor/study-kit/shell.css')).replace('__KIT_CSS__', () => read('vendor/study-kit/study-kit.css'))
-  .replace('__STUDY_KIT__', () => kit).replace('__BEER_ENGINE__', () => read('math/beer.js').replace(/<\//g, '<\\/')).replace('__BANK__', () => json);
+  .replace('__STUDY_KIT__', () => kit).replace('__BEER_ENGINE__', () => read('math/beer.js').replace(/<\//g, '<\\/')).replace('__INV_ENGINE__', () => read('math/inventory.js').replace(/<\//g, '<\\/')).replace('__BN_ENGINE__', () => read('math/bottleneck.js').replace(/<\//g, '<\\/')).replace('__BANK__', () => json);
 fs.mkdirSync(path.join(here, 'build'), { recursive: true });
 fs.writeFileSync(path.join(here, 'build', 'index.html'), out);
 fs.writeFileSync(path.join(here, 'build', 'bank.json'), JSON.stringify(bank));   // for the blind-check export; not published
-console.log('study-kit', kitVersion, '· lanes', laneIds.length, '(active: quality) · sections', sectionIds.length,
+console.log('study-kit', kitVersion, '· lanes', laneIds.length, '(active: quality, supply-chain) · sections', sectionIds.length,
   '· decks', DECKS.map(d => d.id + ' ' + d.lessons.length + 'L/' + d.questions.length + 'Q/' + d.cards.length + 'C keys ' + d.keyPositions.join('/')).join(', '),
   '· math', mc.n + ' values, JS = Python', '· bytes', Buffer.byteLength(out));

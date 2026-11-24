@@ -5,7 +5,8 @@
 'use strict';
 const { execFileSync } = require('child_process');
 const path = require('path');
-const NJ = require('./numbers.js'), BG = require('./beer.js');
+const NJ = require('./numbers.js'), BG = require('./beer.js'), IE = require('./inventory.js'), BN = require('./bottleneck.js');
+const INV = require('../data/inventory.json');
 
 function py(file, input) { return JSON.parse(execFileSync('python3', ['-I', path.join(__dirname, file)], { input: input || '', maxBuffer: 1 << 28 }).toString()); }
 
@@ -44,7 +45,31 @@ function check(usedFormats) {
   js.games.forEach((g, i) => cmp(g, R.games[i], 'game ' + i));
   const b = BG.stats(js.all_bench);
   if (R.grid.team !== '204.00' || R.grid.sp !== 28 || R.grid.spFactory !== 20 || b.team2 !== 408 || b.stages.map(s => s.cost2 / 2).join() !== '46,50,54,54') errs.push('beer: benchmark does not reproduce Sterman ($204; 46/50/54/54; S′ 28/20): ' + JSON.stringify(R.grid));
-  return { errs, n, beer: js };
+  // ---- inventory sim: textbook and no-change policies, the hindsight grid search, and 300 seeded random games
+  //      (some paused at a review); every weekly value, total and fill rate equal.
+  const ig = [IE.textbook(INV), [0, 0, 0, 0].map(() => IE.textbook(INV)[0])];
+  for (let k = 0; k < 300; k++) { const ph = 1 + (k % 4 === 0 ? k % 3 : 3); ig.push(Array.from({ length: ph }, () => ({ q: Math.floor(rnd() * 900), rop: Math.floor(rnd() * 1000) }))); }
+  const IP = py('inventory.py', JSON.stringify({ data: INV, games: ig }));
+  ig.forEach((g, i) => { const a = IE.play(INV, g), b2 = IP.games[i];
+    for (const k in a.h) { n += a.h[k].length; if (JSON.stringify(a.h[k]) !== JSON.stringify(b2.h[k])) errs.push('inventory game ' + i + ' ' + k + ' differs'); }
+    if (a.waiting !== b2.waiting || a.week !== b2.week) errs.push('inventory game ' + i + ' pause differs');
+    if (a.waiting < 0) { const s = IE.stats(a, INV), t = b2.stats; n += 6;
+      for (const k of ['hold', 'order', 'lost', 'total', 'orders', 'lostUnits']) if (s[k] !== t[k]) errs.push('inventory game ' + i + ' ' + k + ': JS ' + s[k] + ' vs Python ' + t[k]);
+      if (Math.abs(s.fill - t.fill) > 1e-12) errs.push('inventory game ' + i + ' fill rate differs'); } });
+  n += 2; if (JSON.stringify(IE.textbook(INV)) !== JSON.stringify(IP.textbook)) errs.push('inventory textbook policy differs');
+  const hs = IE.hindsight(INV); if (JSON.stringify(hs) !== JSON.stringify(IP.hindsight)) errs.push('inventory hindsight best differs: ' + JSON.stringify(hs) + ' vs ' + JSON.stringify(IP.hindsight));
+  // ---- bottleneck line: 400 seeded random plans (some paused, some over budget) plus named ones, and the exhaustive search
+  const bp = [{ release: 'push', buys: Array(12).fill(-1) }, { release: 'rope', buys: Array(12).fill(-1) }];
+  for (let k = 0; k < 400; k++) { const len = k % 5 === 0 ? k % 12 : 12; bp.push({ release: k % 2 ? 'rope' : 'push', buys: Array.from({ length: len }, () => rnd() < 0.7 ? -1 : Math.floor(rnd() * 5)) }); }
+  const BP = py('bottleneck.py', JSON.stringify({ plans: bp }));
+  bp.forEach((p, i) => { const a = BN.play(p), b2 = BP.plans[i];
+    for (const k in a.h) { n += a.h[k].length; if (JSON.stringify(a.h[k]) !== JSON.stringify(b2.h[k])) errs.push('bottleneck plan ' + i + ' ' + k + ' differs'); }
+    if (a.waiting !== b2.waiting || a.spent !== b2.spent) errs.push('bottleneck plan ' + i + ' pause or spend differs');
+    if (a.waiting < 0) { const s = BN.stats(a), t = b2.stats; n += 6;
+      for (const k of ['profit', 'out', 'spent', 'endWip']) if (s[k] !== t[k]) errs.push('bottleneck plan ' + i + ' ' + k + ': JS ' + s[k] + ' vs Python ' + t[k]);
+      for (const k of ['avgWip', 'lead']) if (Math.abs(s[k] - t[k]) > 1e-12) errs.push('bottleneck plan ' + i + ' ' + k + ' differs'); } });
+  const bb = BN.best(); n++; if (JSON.stringify(bb) !== JSON.stringify(BP.best)) errs.push('bottleneck best plan differs: ' + JSON.stringify(bb) + ' vs ' + JSON.stringify(BP.best));
+  return { errs, n, beer: js, inventory: { textbook: IE.textbook(INV), hindsight: hs }, bottleneck: { best: bb } };
 }
 module.exports = { check };
 if (require.main === module) { const r = check(); console.log(r.errs.length ? r.errs.join('\n') : 'ok, ' + r.n + ' values'); }
