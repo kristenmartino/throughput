@@ -38,3 +38,17 @@ The files were exported by `node tools/export-blind.js <dir> sc4,sc1,sc5,sc2,sc3
 | sc6-3 ¶3 | 97.25% prints as 97.3%. This is half-up rounding, while Python's float rounding gives 97.2. | No change: the app's formatter rounds half-up throughout. |
 
 All fixes were applied before publishing. The build passes, and the Playwright run passes 1,660 of 1,660.
+
+## Bottleneck sim, four purchase kinds (Nov 24, about 17:00 ET)
+**Checker:** Claude Sonnet, given only the briefing, the variation table and the lesson (`sim.txt`). It wrote its own simulator from the briefing text. Its full report is `docs/blind-check-bottleneck-levers-answers.md`.
+
+**Result (Measured):** every number in the lesson reproduced once the checker settled the ambiguous rules. Its own exhaustive search (in C, with a separate Python search of the 1,533,035 pace plans) found the same best plan, $703,000, among the same 3,066,070 plans. The plan is unique; the runner-up is $699,500.
+
+| Flag | Fix |
+|---|---|
+| The briefing left out rules that a player needs and that the numbers depend on: stations are worked from last to first; release joins at the end of the round; the pace is re-checked every round and rises with purchased capacity; purchases work before the round's work; buffer space can't be bought for station 1; the budget can't bind; a late setup reduction is wasted. | All added to the briefing. |
+| "The cheaper purchase wins" understated the $21,000 gap. | The lesson now splits it into $10,000 of price and $11,000 of carrying cost, with blocking 24 against 5. The split is asserted in `build.js`. |
+| The best plan buys at Weld and Test, which seems to contradict "capacity anywhere but the constraint changes nothing". | The lesson now says that capacity at a non-constraint pays only after the constraint has moved there. The build asserts that the best plan raises Assemble before Weld. |
+| "Holds back 43 units" counts unit-rounds. | Reworded: "a unit held two rounds counts twice". |
+| End-of-run work in process includes the last round's release. | Now stated. |
+| Average work in process was undefined. | Defined in the briefing. |

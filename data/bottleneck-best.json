@@ -1,0 +1,23 @@
+{
+ "hash": "4dc552b50eaccb293eb55123fdc992120a59f8cfc4b803f0efdac8c3a86c495c",
+ "best": {
+  "release": "rope",
+  "buys": [
+   3,
+   1,
+   -1,
+   -1,
+   9,
+   -1,
+   -1,
+   -1,
+   -1,
+   -1,
+   -1,
+   -1
+  ],
+  "profit": 703000,
+  "searched": 3066070
+ },
+ "note": "Exhaustive search, JS and Python agreed"
+}
