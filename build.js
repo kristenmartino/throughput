@@ -23,8 +23,11 @@ for (const ln of L.lanes) {
   if (/\b(CDO|CRO|CPO|CCO)\b/.test(ln.name)) errors.push('lane ' + ln.id + ': colliding bare acronym in the name');
 }
 if (laneIds.join() !== 'quality,supply-chain,coo') errors.push('lanes are quality, supply-chain, coo in that order');
-if (L.lanes.filter(l => l.active).map(l => l.id).join() !== 'quality,supply-chain') errors.push('Phase 3: the quality and supply-chain lanes are active');
-{ const w = (L.sections['supply-chain'] || []).filter(s => s.kind === 'Deck').map(s => s.weight);   // ASCM CSCP ECM v5.0 weights (Read, Nov 24)
+if (L.lanes.filter(l => l.active).map(l => l.id).join() !== 'quality,supply-chain,coo') errors.push('Phase 4: all three lanes are active');
+const levelIds = (L.levels || []).map(l => l.id);
+if (levelIds.join() !== 'director,vp,c-level') errors.push('levels are director, vp, c-level');
+const badLevels = v => !Array.isArray(v) || !v.length || v.some(x => levelIds.indexOf(x) === -1);
+{ const w = (L.sections['supply-chain'] || []).filter(s => s.kind === 'Deck' && s.weight).map(s => s.weight);   // ASCM CSCP ECM v5.0 weights (Read, Nov 24)
   if (w.join() !== '10,10,17,19,9,17,10,8') errors.push('supply-chain decks must carry the ASCM weights 10,10,17,19,9,17,10,8 (got ' + w.join() + ')'); }
 for (const s of L.sections['supply-chain'] || []) if (s.kind === 'Simulation' && !/^#[a-z0-9-]+$/.test(s.route || '')) errors.push('section supply-chain-' + s.id + ': a simulation needs a route');
 for (const lane in L.sections) {
@@ -49,13 +52,19 @@ const OUTLINE = { overview: { counts: [3, 3, 3, 2, 2, 3], cards: 16 }, define: {
   // largest remainder, ties to the heavier module); lessons follow the sections of ASCM's 2026 module outline.
   sc1: { counts: [3, 3, 2, 4, 3], cards: 11 }, sc2: { counts: [3, 4, 3, 3, 2], cards: 11 }, sc3: { counts: [3, 4, 3, 3, 3, 4, 3, 3], cards: 19 },
   sc4: { counts: [3, 4, 3, 3, 3, 4, 3, 3, 3], cards: 22 }, sc5: { counts: [3, 4, 3, 3], cards: 10 }, sc6: { counts: [3, 4, 3, 3, 3, 3, 3, 3], cards: 19 },
-  sc7: { counts: [3, 3, 3, 3, 3], cards: 11 }, sc8: { counts: [3, 3, 3, 3], cards: 9 } };
+  sc7: { counts: [3, 3, 3, 3, 3], cards: 11 }, sc8: { counts: [3, 3, 3, 3], cards: 9 },
+  // COO lane and the Chief Procurement Officer deck (Phase 4, approved Nov 24): 5 lessons, 12 questions, 10 cards each.
+  coo1: { counts: [3, 3, 2, 2, 2], cards: 10 }, coo2: { counts: [3, 3, 2, 2, 2], cards: 10 }, coo3: { counts: [3, 3, 2, 2, 2], cards: 10 },
+  coo4: { counts: [3, 3, 2, 2, 2], cards: 10 }, coo5: { counts: [3, 3, 2, 2, 2], cards: 10 }, coo6: { counts: [3, 3, 2, 2, 2], cards: 10 },
+  cpo1: { counts: [3, 3, 2, 2, 2], cards: 10 } };
 { const t = k => ['sc1', 'sc2', 'sc3', 'sc4', 'sc5', 'sc6', 'sc7', 'sc8'].map(id => k === 'q' ? OUTLINE[id].counts.reduce((a, b) => a + b, 0) : k === 'l' ? OUTLINE[id].counts.length : OUTLINE[id].cards);
   if (t('q').join() !== '15,15,26,29,13,25,15,12' || t('l').join() !== '5,5,8,9,4,8,5,4' || t('c').join() !== '11,11,19,22,10,19,11,9') errors.push('supply chain outline must follow the ASCM weights: questions ' + t('q') + ', lessons ' + t('l') + ', cards ' + t('c')); }
 const FIGS = require('./math/figs.js'), NUMS = NUM.compute();
 const words = s => String(s || '').trim().split(/\s+/).filter(Boolean).length;
-const DECKS = ['overview', 'define', 'measure', 'analyze', 'improve', 'control', 'sc4', 'sc1', 'sc5', 'sc2', 'sc3', 'sc7', 'sc6', 'sc8'].filter(id => fs.existsSync(path.join(here, 'content', id + '.js'))).map(id => require('./content/' + id + '.js')).map(src => {
-  const d = src.deck, o = OUTLINE[d.id], w = 'deck ' + d.id, lane = d.lane || 'quality';
+const DECKS = ['overview', 'define', 'measure', 'analyze', 'improve', 'control', 'sc4', 'sc1', 'sc5', 'sc2', 'sc3', 'sc7', 'sc6', 'sc8', 'coo1', 'coo2', 'coo3', 'coo4', 'coo5', 'coo6', 'cpo1'].filter(id => fs.existsSync(path.join(here, 'content', id + '.js'))).map(id => require('./content/' + id + '.js')).map(src => {
+  const d = src.deck, o = OUTLINE[d.id], w = 'deck ' + d.id, lane = d.lane || 'quality', leveled = !!d.leveled;
+  if (leveled !== (lane === 'coo' || d.id === 'cpo1')) errors.push(w + ': COO lane decks and cpo1 carry level tags; no other deck does');
+  const lv = (x, xw) => { if (!leveled) return undefined; if (badLevels(x.levels)) errors.push(xw + ': levels must be a non-empty list of ' + levelIds.join(', ')); return x.levels; };
   if (!o || sectionIds.indexOf(lane + '-' + d.id) === -1) errors.push(w + ': no section ' + lane + '-' + d.id);
   if (!ID.test(d.id)) errors.push(w + ': bad id');
   claim('deck-' + d.id, w);
@@ -66,7 +75,7 @@ const DECKS = ['overview', 'define', 'measure', 'analyze', 'improve', 'control',
     for (const p of l.body) if (!/\([^()]*\b(Read|Relayed|Inferred|Computed|computed)\b[^()]*\)\s*$/.test(p)) errors.push(lw + ': every paragraph needs a tier tag: ' + p.slice(0, 60));
     for (const k of l.sources) if (!SRC[k]) errors.push(lw + ': unknown source ' + k);
     const figs = (l.figs || []).map(g => { if (!(g.after >= 0 && g.after < l.body.length) || FIGS.kinds.indexOf(g.kind) === -1) { errors.push(lw + ': bad figure ' + JSON.stringify(g)); return null; } return Object.assign({ after: g.after, kind: g.kind }, FIGS.draw(g.kind, NUMS)); }).filter(Boolean);
-    return { id: l.id, title: l.title, bok: l.bok, status: l.status, body: l.body.map(p => fill(p, lw)), sources: l.sources.map(k => SRC[k]).filter(Boolean), figs };
+    return { id: l.id, title: l.title, bok: l.bok, status: l.status, levels: lv(l, lw), body: l.body.map(p => fill(p, lw)), sources: l.sources.map(k => SRC[k]).filter(Boolean), figs };
   });
   if (o && lessons.length !== o.counts.length) errors.push(w + ': ' + o.counts.length + ' lessons in the approved outline, got ' + lessons.length);
   const pos = [0, 0, 0, 0];
@@ -80,7 +89,7 @@ const DECKS = ['overview', 'define', 'measure', 'analyze', 'improve', 'control',
     for (let j = 0; j < 4; j++) { if (j !== q.answer && !(q.whyNot && q.whyNot[j])) errors.push(qw + ': option ' + j + ' needs a whyNot'); }
     if (q.whyNot && q.whyNot[q.answer]) errors.push(qw + ': the answer has a whyNot');
     pos[q.answer]++;
-    const out = { id: q.id, mock: q.mock !== false, lesson: q.lesson, bok: q.bok, level: q.level, status: q.status === undefined ? 'Draft' : q.status, stem: fill(q.stem, qw), options: q.options.map(x => fill(x, qw)), answer: q.answer, why: fill(q.why, qw), whyNot: {} };
+    const out = { id: q.id, levels: lv(q, qw), mock: q.mock !== false, lesson: q.lesson, bok: q.bok, level: q.level, status: q.status === undefined ? 'Draft' : q.status, stem: fill(q.stem, qw), options: q.options.map(x => fill(x, qw)), answer: q.answer, why: fill(q.why, qw), whyNot: {} };
     for (const j in q.whyNot) out.whyNot[j] = fill(q.whyNot[j], qw);
     if (new Set(out.options).size !== 4) errors.push(qw + ': two options print the same text: ' + out.options.join(' | '));
     return out;
@@ -98,12 +107,12 @@ const DECKS = ['overview', 'define', 'measure', 'analyze', 'improve', 'control',
   const cards = src.cards.map((c, i) => {
     const cw = 'card ' + c.id; claim(c.id, cw);
     if (c.id !== d.cPrefix + '-' + String(i + 1).padStart(2, '0') || !c.front || !c.back) errors.push(cw + ': id ' + d.cPrefix + '-nn in order, front and back');
-    return { id: c.id, front: fill(c.front, cw), back: fill(c.back, cw), status: c.status === undefined ? 'Draft' : c.status };
+    return { id: c.id, levels: lv(c, cw), front: fill(c.front, cw), back: fill(c.back, cw), status: c.status === undefined ? 'Draft' : c.status };
   });
   if (o && cards.length !== o.cards) errors.push(w + ': ' + o.cards + ' cards in the approved outline, got ' + cards.length);
   const ln = L.lanes.find(x => x.id === lane), sec = (L.sections[lane] || []).find(x => x.id === d.id) || {};
   return { id: d.id, title: d.title, bok: d.bok, scored: d.scored, weight: sec.weight, lane, laneShort: ln ? ln.short : lane,
-    bokLabel: lane === 'quality' ? 'ASQ BoK section' : 'CSCP module', lessons, questions, cards, keyPositions: pos };
+    leveled, bokLabel: d.bokLabel || (lane === 'quality' ? 'ASQ BoK section' : 'CSCP module'), lessons, questions, cards, keyPositions: pos };
 });
 for (const dk of DECKS) for (const t of [].concat(...dk.lessons.map(l => l.body.concat(l.figs.map(g => g.svg))), ...dk.questions.map(q => [q.stem, q.why].concat(q.options, Object.values(q.whyNot))), ...dk.cards.map(c => [c.front, c.back])))
   if (/\{\{|NaN|undefined|Infinity/.test(t)) errors.push('unfilled or bad number in: ' + t.slice(0, 80));
@@ -169,7 +178,7 @@ MOCK.pool = buildPool(MOCK, require('./content/mock-pool.js'), { overview: 'OV',
 // pretest), 3.5 hours (Read, ASCM exam page). ASCM does not say how pretest items are spread, so all 150 count and the draw
 // per module is the deck size, which follows the ECM weights (largest remainder). Held-out pool by default, as Green Belt.
 const CSCP = (() => {
-  const secs = (L.sections['supply-chain'] || []).filter(x => x.kind === 'Deck'), draw = {};
+  const secs = (L.sections['supply-chain'] || []).filter(x => x.kind === 'Deck' && x.weight), draw = {};
   secs.forEach(x => { const d = DECKS.find(k => k.id === x.id); draw[x.id] = d ? d.questions.length : 0; });
   const total = Object.values(draw).reduce((a, b) => a + b, 0);
   if (total !== 150) errors.push('CSCP mock: draw totals ' + total + ', not 150');
@@ -259,11 +268,30 @@ const inventory = (() => {
     data: INVD, textbook: tb, hindsight: hs, ref: { textbook: S1, unchanged: S0 } };
 })();
 
-// Engines: no Craft or Simulations content yet. Craft packets will use ids TP-n, runs TPN-n, role-plays TPL-n.
-const craft = loadCraft([], { dir: path.join(here, 'build', 'craft'), idPrefix: 'TP', takenIds: new Set() });
+// Engines (Phase 4): Craft packets TP-n (craft-stages.js + craft-src/*.md, numbers filled from math/ into build/craft/),
+// runs TPN-n (sims-runs.js) and role-plays TPL-n (sims-roleplay.js), all validated by study-kit's tools. Each item also
+// carries lane, section and level tags.
+const craftDefs = fs.existsSync(path.join(here, 'craft-stages.js')) ? require('./craft-stages.js') : [];
+const craftDir = path.join(here, 'build', 'craft'); fs.mkdirSync(craftDir, { recursive: true });
+for (const d of craftDefs) {
+  try { fs.writeFileSync(path.join(craftDir, d.file), fill(fs.readFileSync(path.join(here, 'craft-src', d.file), 'utf8'), 'packet ' + d.id)); } catch (e) { errors.push('packet ' + d.id + ': ' + e.message); }
+  for (const st of d.stages) st.checklist = st.checklist.map(x => fill(x, 'stage ' + st.id));
+}
+const craft = loadCraft(craftDefs, { dir: craftDir, idPrefix: 'TP', takenIds: new Set() });
 errors.push(...craft.errors);
-const sims = validateSims({ runs: [], roleplays: [], runPrefix: 'TPN', rpPrefix: 'TPL', takenIds: new Set(craft.ids) });
+const runDefs = fs.existsSync(path.join(here, 'sims-runs.js')) ? require('./sims-runs.js')(fill) : [];
+const rpDefs = fs.existsSync(path.join(here, 'sims-roleplay.js')) ? require('./sims-roleplay.js')(fill) : [];
+const sims = validateSims({ runs: runDefs, roleplays: rpDefs, runPrefix: 'TPN', rpPrefix: 'TPL', takenIds: new Set(craft.ids) });
 errors.push(...sims.errors);
+for (const x of [].concat(craftDefs, runDefs, rpDefs)) {
+  if (sectionIds.indexOf(x.lane + '-' + x.section) === -1) errors.push(x.id + ': unknown section ' + x.lane + '-' + x.section);
+  if (badLevels(x.levels)) errors.push(x.id + ': levels must be a non-empty list of ' + levelIds.join(', '));
+  if (x.status !== 'Draft' && x.status !== '') errors.push(x.id + ': status must be Draft or empty');
+}
+for (const d of craftDefs) for (const st of d.stages) if (levelIds.indexOf(st.level) === -1) errors.push(st.id + ': stage level must be one of ' + levelIds.join(', '));
+for (const p of craft.packets) { const d = craftDefs.find(x => x.id === p.id); p.lane = d.lane; p.levels = d.levels; p.section = d.section; p.status = d.status; p.stages.forEach((st, i) => { st.level = d.stages[i].level; }); }
+for (const t of [].concat(...craft.packets.map(p => [p.title].concat(p.stages.map(st => JSON.stringify(st)))), ...sims.runs.map(r => JSON.stringify(r)), ...sims.roleplays.map(r => JSON.stringify(r))))
+  if (/\{\{|NaN|Infinity/.test(t)) errors.push('unfilled or bad number in a packet, run or role-play: ' + t.slice(0, 80));
 
 // Published link ids: the build refuses to drop any.
 const PUB = path.join(here, 'published-ids.json');
@@ -287,7 +315,7 @@ const ref = { average: mc.beer.all_average, benchSeat: mc.beer.bench_in_seat }; 
 const BG = require('./math/beer.js');
 const beer = { id: BEER.id, title: BEER.title, status: BEER.status, blurb: BEER.blurb, briefing: BEER.briefing, lesson: BEER.lesson, sources: BEER.sources.map(k => SRC[k]),
   refTeam2: { average: BG.stats(ref.average).team2, bench: BG.stats(mc.beer.all_bench).team2 }, benchAll2: BG.stats(mc.beer.all_bench).stages.map(s => s.cost2), benchTeam2: ref.benchSeat.map(g => BG.stats(g).team2) };
-const bank = { lanes: L.lanes, sections: L.sections, exam: L.exam, craft: craft.packets, runs: sims.runs, roleplays: sims.roleplays, kitVersion, decks: DECKS, beer, inventory, bottleneck, mock: MOCK, mocks: { mock: MOCK, cscp: CSCP } };
+const bank = { levels: L.levels, lanes: L.lanes, sections: L.sections, exam: L.exam, craft: craft.packets, runs: sims.runs, roleplays: sims.roleplays, kitVersion, decks: DECKS, beer, inventory, bottleneck, mock: MOCK, mocks: { mock: MOCK, cscp: CSCP } };
 const LS = String.fromCharCode(0x2028), PS = String.fromCharCode(0x2029);
 const json = JSON.stringify(bank).replace(/<\//g, '<\\/').split(LS).join('\\u2028').split(PS).join('\\u2029');
 const tpl = read('index.src.html');
@@ -298,6 +326,6 @@ const out = tpl.replace('__SHELL_CSS__', () => read('vendor/study-kit/shell.css'
 fs.mkdirSync(path.join(here, 'build'), { recursive: true });
 fs.writeFileSync(path.join(here, 'build', 'index.html'), out);
 fs.writeFileSync(path.join(here, 'build', 'bank.json'), JSON.stringify(bank));   // for the blind-check export; not published
-console.log('study-kit', kitVersion, '· lanes', laneIds.length, '(active: quality, supply-chain) · sections', sectionIds.length,
+console.log('study-kit', kitVersion, '· lanes', laneIds.length, '(active: ' + L.lanes.filter(l => l.active).map(l => l.id).join(', ') + ') · sections', sectionIds.length,
   '· decks', DECKS.map(d => d.id + ' ' + d.lessons.length + 'L/' + d.questions.length + 'Q/' + d.cards.length + 'C keys ' + d.keyPositions.join('/')).join(', '),
   '· math', mc.n + ' values, JS = Python', '· bytes', Buffer.byteLength(out));

@@ -54,6 +54,9 @@ def compute():
     spec = importlib.util.spec_from_file_location('supply', os.path.join(os.path.dirname(os.path.abspath(__file__)), 'supply.py'))
     sup = importlib.util.module_from_spec(spec); spec.loader.exec_module(sup)
     out.update(sup.compute_supply())
+    spec2 = importlib.util.spec_from_file_location('coo', os.path.join(os.path.dirname(os.path.abspath(__file__)), 'coo.py'))
+    coo = importlib.util.module_from_spec(spec2); spec2.loader.exec_module(coo)
+    out.update(coo.compute_coo())
     return out
 
 if __name__ == '__main__':

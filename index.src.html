@@ -98,7 +98,7 @@ figure.lfig { margin: 0; display: grid; gap: 6px; }
   // ---- stores (study-kit's save helper): prefs, deck progress, Beer Game
   const status = () => { for (const [id, s] of [['prefs-saved', prefs], ['deck-saved', decks], ['beer-saved', beer], ['mock-saved', mock], ['inv-saved', inv], ['bn-saved', bn]]) { const el = document.getElementById(id); if (el && s) el.textContent = s.statusText(); } };
   const keep = ok => x => { const o = {}; if (!x || typeof x !== 'object') return o; for (const k in x) if (ok(k) && x[k] && typeof x[k] === 'object' && typeof x[k].ts === 'number') o[k] = JSON.parse(JSON.stringify(x[k])); return o; };
-  const prefs = K.save.createStore({ localKey: APP + ':prefs:v1', doc: 'prefs', field: 'prefs', normalize: keep(k => k === 'lane'), onRemote() { if (SCREEN === 'home') host.keepScroll(); }, onStatus: () => status() });
+  const prefs = K.save.createStore({ localKey: APP + ':prefs:v1', doc: 'prefs', field: 'prefs', normalize: keep(k => k === 'lane' || k === 'levels'), onRemote() { if (SCREEN === 'home') host.keepScroll(); }, onStatus: () => status() });
   const decks = K.save.createStore({ localKey: APP + ':decks:v1', doc: 'decks', field: 'decks', normalize: keep(k => !!(QS[k] || CARDS[k])),
     onRemote() { if (['deck', 'lesson', 'lane', 'cards'].indexOf(SCREEN) !== -1) host.keepScroll(); }, onStatus: () => status() });
   const beer = K.save.createStore({ localKey: APP + ':beer:v1', doc: 'beer', field: 'beer', normalize: keep(k => /^(game|last|seat-[0-3])$/.test(k)),
@@ -165,11 +165,37 @@ figure.lfig { margin: 0; display: grid; gap: 6px; }
     roleplay: { learner: 'operations leader', rules: ['guarded', 'noCoaching', 'noUnpromptedOffer'], scoring: ['outcomeAgreesWithScore', 'verifiedQuotes'] } });
 
   const draftChip = x => x && x.status === 'Draft' ? '<span class="cchip draft">Draft</span>' : '';
-  const itemRow = (href, title, meta, status) => '<a class="itemrow" href="' + esc(href) + '"><span class="top"><b>' + esc(title) + '</b>' + draftChip({ status }) + '</span>' + (meta ? '<span class="k">' + esc(meta) + '</span>' : '') + '</a>';
-  // Deck progress: a question counts as right if its last answer was right.
+  // Level tags (Phase 4, decision 2B): COO lane items and the Chief Procurement Officer deck carry Director / VP /
+  // C-level tags. The filter is one saved preference ('levels'); items with no tags (Green Belt, CSCP) always show.
+  const LEVELS = BANK.levels, ALL = LEVELS.map(l => l.id);
+  function levels() { const p = prefs.get('levels'); const v = p && Array.isArray(p.v) ? p.v.filter(x => ALL.indexOf(x) !== -1) : []; return v.length ? v : ALL.slice(); }
+  const showFor = x => { if (!x || !x.levels) return true; const on = levels(); return x.levels.some(v => on.indexOf(v) !== -1); };
+  const vis = arr => arr.filter(showFor);
+  const levelName = id => (LEVELS.find(l => l.id === id) || {}).name || id;
+  const lvChips = ids => ids ? ids.map(id => '<span class="lvchip">' + esc(levelName(id)) + '</span>').join('') : '';
+  const hiddenNote = n => n ? '<p class="note">' + n + ' more hidden by the level filter.</p>' : '';
+  function levelFilter() {
+    const on = levels();
+    return '<section aria-labelledby="lv-h"><div class="section-h"><h2 id="lv-h">Level</h2><span class="hint">Shows items tagged for the levels you pick</span></div>' +
+      '<div class="toggles" role="group" aria-label="Level filter">' + LEVELS.map(l => '<button class="tog" data-act="level" data-id="' + l.id + '" aria-pressed="' + (on.indexOf(l.id) !== -1) + '" title="' + esc(l.scope) + '">' + esc(l.name) + '</button>').join('') + '</div>' +
+      '<p class="note" style="margin-top:8px">' + LEVELS.filter(l => on.indexOf(l.id) !== -1).map(l => '<b>' + esc(l.name) + '</b>: ' + esc(l.scope).toLowerCase()).join('. ') + '.</p></section>';
+  }
+  const itemRow = (href, title, meta, status, lv) => '<a class="itemrow" href="' + esc(href) + '"><span class="top"><b>' + esc(title) + '</b>' + draftChip({ status }) + '</span>' + (meta ? '<span class="k">' + esc(meta) + '</span>' : '') + (lv ? '<span class="row">' + lvChips(lv) + '</span>' : '') + '</a>';
+  // Deck progress: a question counts as right if its last answer was right. Counts follow the level filter.
   const qRec = id => decks.get(id);
-  const deckStats = d => { const qs = d.questions, seen = qs.filter(q => qRec(q.id)), right = seen.filter(q => qRec(q.id).last === 1); const got = d.cards.filter(c => (decks.get(c.id) || {}).mark === 'got').length; return { n: qs.length, seen: seen.length, right: right.length, cards: d.cards.length, got }; };
-  const lessonStats = (d, l) => { const qs = d.questions.filter(q => q.lesson === l.id); return { n: qs.length, right: qs.filter(q => (qRec(q.id) || {}).last === 1).length }; };
+  const deckStats = d => { const qs = vis(d.questions), cs = vis(d.cards), seen = qs.filter(q => qRec(q.id)), right = seen.filter(q => qRec(q.id).last === 1); const got = cs.filter(c => (decks.get(c.id) || {}).mark === 'got').length; return { n: qs.length, seen: seen.length, right: right.length, cards: cs.length, got }; };
+  const lessonStats = (d, l) => { const qs = vis(d.questions).filter(q => q.lesson === l.id); return { n: qs.length, right: qs.filter(q => (qRec(q.id) || {}).last === 1).length }; };
+  // Craft packets, runs and role-plays listed in a lane section (COO lane).
+  const inSec = (arr, lane, sec) => arr.filter(x => x.lane === lane && x.section === sec);
+  const EXTRA = [
+    [BANK.craft, p => '#packet-' + p.id.toLowerCase(), p => 'Craft packet · ' + p.stages.length + ' stages · you are the ' + p.role],
+    [BANK.runs, r => '#run-' + r.id.toLowerCase(), r => 'Simulation · ' + r.steps.length + ' steps · numbers computed in code'],
+    [BANK.roleplays, r => '#rp-' + r.id.toLowerCase(), r => 'Role-play · Claude plays ' + r.role]
+  ];
+  function extraItems(lane, sec) {
+    for (const [arr, href, meta] of EXTRA) { const all = inSec(arr, lane, sec); if (all.length) { const on = vis(all); return on.map(x => itemRow(href(x), x.title, meta(x), x.status, x.levels)).join('') + hiddenNote(all.length - on.length); } }
+    return null;
+  }
 
   function renderHome() {
     const last = prefs.get('lane');
@@ -189,11 +215,12 @@ figure.lfig { margin: 0; display: grid; gap: 6px; }
     const g = game(), SIM = { '#beer-game': [BEER, () => g ? 'In progress · ' + BG.SEATS[g.seat] : 'Bullwhip · 32 weekly orders'], '#inventory-sim': [INV, invMeta], '#bottleneck-sim': [BNK, bnMeta] };
     app.innerHTML = host.header(l.short + ' lane', 'home', '', 'Back to lanes', l.id === 'quality' ? 'Green Belt' : l.id === 'supply-chain' ? 'CSCP' : '') +
       '<main class="wrap"><section class="card" style="display:grid;gap:10px"><h2 class="ttl" style="font-size:19px">' + esc(l.name) + '</h2><p class="note">' + esc(l.blurb) + '</p>' +
-      (BANK.exam[l.id] ? '<p class="note"><b>The exam:</b> ' + esc(BANK.exam[l.id]) + '</p>' : '') + '</section>' +
-      '<section aria-labelledby="sc-h"><div class="section-h"><h2 id="sc-h">Sections</h2><span class="hint">Weighted as the exam is</span></div><div class="card" style="padding-block:4px">' +
-      secs.map(s => { const d = deckById(s.id), st = d && deckStats(d), sim = s.kind === 'Simulation' && SIM[s.route], share = s.weight ? s.weight + '% of the exam' : s.questions ? s.questions + ' of 100 scored questions' : '';
-        return '<div class="secrow" id="' + esc(l.id + '-' + s.id) + '"><div class="top"><b>' + esc(s.title) + '</b>' + (d || sim || (s.mock && MOCKS[s.mock]) ? '<span class="k">' + esc(s.kind) + '</span>' : '<span class="soon">Phase ' + s.phase + '</span>') + '</div>' +
-          (d ? '<div class="items">' + itemRow('#deck-' + d.id, d.title + ' deck', share + ' · ' + d.lessons.length + ' lessons · ' + st.right + ' of ' + st.n + ' right', 'Draft') + '</div>'
+      (BANK.exam[l.id] ? '<p class="note"><b>The exam:</b> ' + esc(BANK.exam[l.id]) + '</p>' : '') + '</section>' + (l.leveled ? levelFilter() : '') +
+      '<section aria-labelledby="sc-h"><div class="section-h"><h2 id="sc-h">Sections</h2><span class="hint">' + (l.leveled ? 'Draft items are not yet reviewed' : 'Weighted as the exam is') + '</span></div><div class="card" style="padding-block:4px">' +
+      secs.map(s => { const d = deckById(s.id), st = d && deckStats(d), sim = s.kind === 'Simulation' && SIM[s.route], ex = !d && !sim && !s.mock ? extraItems(l.id, s.id) : null, share = s.weight ? s.weight + '% of the exam' : s.questions ? s.questions + ' of 100 scored questions' : '';
+        return '<div class="secrow" id="' + esc(l.id + '-' + s.id) + '"><div class="top"><b>' + esc(s.title) + '</b>' + (d || sim || ex !== null || (s.mock && MOCKS[s.mock]) ? '<span class="k">' + esc(s.kind) + '</span>' : '<span class="soon">Phase ' + s.phase + '</span>') + '</div>' +
+          (d ? '<div class="items">' + itemRow('#deck-' + d.id, d.title + ' deck', (share ? share + ' · ' : '') + vis(d.lessons).length + ' lessons' + (d.leveled ? ' at your levels' : '') + ' · ' + st.right + ' of ' + st.n + ' right', 'Draft') + '</div>'
+            : ex !== null ? '<div class="items">' + ex + '</div>'
             : sim ? '<div class="items">' + itemRow(s.route, sim[0].title, sim[1](), sim[0].status) + '</div>'
             : s.mock && MOCKS[s.mock] ? '<div class="items">' + itemRow(MOCKS[s.mock].route, MOCKS[s.mock].title, mockMeta(MOCKS[s.mock]), MOCKS[s.mock].status) + '</div>'
             : '<span class="k">' + esc(s.kind) + (share ? ' · ' + share : '') + ' · not built yet</span>') + '</div>'; }).join('') +
@@ -204,19 +231,20 @@ figure.lfig { margin: 0; display: grid; gap: 6px; }
   function renderDeck() {
     const d = deckById(VIEW.id); if (!d) return host.go('lane', { id: 'quality' });
     const st = deckStats(d);
-    app.innerHTML = host.header(d.title, 'lane', d.lane, 'Back to the ' + d.laneShort + ' lane', d.weight ? d.weight + '% of the exam' : d.scored + ' of 100') +
+    const ls = vis(d.lessons);
+    app.innerHTML = host.header(d.title, 'lane', d.lane, 'Back to the ' + d.laneShort + ' lane', d.weight ? d.weight + '% of the exam' : d.scored ? d.scored + ' of 100' : 'Draft') +
       '<main class="wrap"><section class="card" style="display:grid;gap:10px"><div class="row"><span class="cchip draft">Draft</span><span class="lvchip">' + esc(d.bokLabel + ' ' + d.bok) + '</span></div>' +
       '<div class="stat"><div><span class="v">' + st.right + '/' + st.n + '</span><span class="l">questions right (last try)</span></div><div><span class="v">' + st.got + '/' + st.cards + '</span><span class="l">cards marked Got it</span></div></div>' +
       '<div class="row"><button class="btn btn-primary" data-act="practice" data-id="' + d.id + '">Practice 10</button><a class="btn" href="#cards-' + d.id + '">Recall cards</a></div>' +
-      '<p class="note" id="deck-saved">' + esc(decks.statusText()) + '</p></section>' +
-      '<section aria-labelledby="ls-h"><div class="section-h"><h2 id="ls-h">Lessons</h2><span class="hint">' + (d.lane === 'quality' ? 'In Body of Knowledge order' : 'In ASCM module outline order') + '</span></div><div class="items">' +
-      d.lessons.map(l => { const s = lessonStats(d, l); return itemRow('#lesson-' + l.id, l.title, l.bok + ' · ' + s.n + ' questions · ' + s.right + ' right', l.status); }).join('') + '</div></section>' + foot() + '</main>';
+      '<p class="note" id="deck-saved">' + esc(decks.statusText()) + '</p></section>' + (d.leveled ? levelFilter() : '') +
+      '<section aria-labelledby="ls-h"><div class="section-h"><h2 id="ls-h">Lessons</h2><span class="hint">' + (d.lane === 'quality' ? 'In Body of Knowledge order' : d.leveled ? 'Tagged by level' : 'In ASCM module outline order') + '</span></div><div class="items">' +
+      ls.map(l => { const s = lessonStats(d, l); return itemRow('#lesson-' + l.id, l.title, l.bok + ' · ' + s.n + ' questions · ' + s.right + ' right', l.status, l.levels); }).join('') + hiddenNote(d.lessons.length - ls.length) + '</div></section>' + foot() + '</main>';
   }
   function saveAnswer(id, right) { const r = qRec(id) || { n: 0, right: 0 }; decks.put(id, { ts: Date.now(), n: (r.n || 0) + 1, right: (r.right || 0) + (right ? 1 : 0), last: right ? 1 : 0 }); }
   const PICKS = {};   // lesson answers shown on this visit
   function questionCard(q, pick, act) {
     const done = pick !== undefined;
-    return '<section class="card" style="display:grid;gap:10px" id="q-' + esc(q.id.toLowerCase()) + '"><div class="row"><span class="qid">' + esc(q.id) + '</span>' + draftChip(q) + '<span class="lvchip">' + esc(q.bok + ' · ' + q.level) + '</span></div><p class="stem">' + esc(q.stem) + '</p><div class="opts" role="group" aria-label="Options">' +
+    return '<section class="card" style="display:grid;gap:10px" id="q-' + esc(q.id.toLowerCase()) + '"><div class="row"><span class="qid">' + esc(q.id) + '</span>' + draftChip(q) + '<span class="lvchip">' + esc(q.bok + ' · ' + q.level) + '</span>' + lvChips(q.levels) + '</div><p class="stem">' + esc(q.stem) + '</p><div class="opts" role="group" aria-label="Options">' +
       q.options.map((o, j) => { const cls = !done ? '' : j === q.answer ? ' is-correct' : j === pick ? ' is-wrong' : '';
         return '<button class="opt' + cls + '" data-act="' + act + '" data-id="' + esc(q.id) + '" data-j="' + j + '"' + (done ? ' disabled' : '') + '><span class="key" aria-hidden="true">' + 'ABCD'[j] + '</span><span>' + esc(o) +
           (done && j === q.answer ? '<span class="tag">Answer</span>' : done && j === pick ? '<span class="tag">Your pick</span>' : '') + '</span></button>'; }).join('') + '</div>' +
@@ -225,19 +253,19 @@ figure.lfig { margin: 0; display: grid; gap: 6px; }
   function renderLesson() {
     const l = LESSONS[VIEW.id]; if (!l) return host.go('lane', { id: 'quality' });
     const d = deckById(l.deck), i = d.lessons.findIndex(x => x.id === l.id), next = d.lessons[i + 1];
-    const qs = d.questions.filter(q => q.lesson === l.id);
+    const qs = vis(d.questions).filter(q => q.lesson === l.id), qAll = d.questions.filter(q => q.lesson === l.id);
     app.innerHTML = host.header(d.title, 'deck', d.id, 'Back to the ' + d.title + ' deck', (i + 1) + ' of ' + d.lessons.length) +
-      '<main class="wrap"><article class="card prose" style="display:grid;gap:12px"><div class="row">' + draftChip(l) + '<span class="lvchip">' + (d.lane === 'quality' ? 'BoK ' : 'Section ') + esc(l.bok) + '</span></div><h2 class="ttl" style="font-size:20px">' + esc(l.title) + '</h2>' +
+      '<main class="wrap"><article class="card prose" style="display:grid;gap:12px"><div class="row">' + draftChip(l) + '<span class="lvchip">' + (d.lane === 'quality' ? 'BoK ' : 'Section ') + esc(l.bok) + '</span>' + lvChips(l.levels) + '</div><h2 class="ttl" style="font-size:20px">' + esc(l.title) + '</h2>' +
       l.body.map((p, k) => '<p>' + esc(p) + '</p>' + (l.figs || []).filter(g => g.after === k).map(g => '<figure class="lfig">' + g.svg +   // built from checked numbers in build.js (math/figs.js)
         '<figcaption class="legend">' + g.legend.map(x => '<span><i style="background:var(' + esc(x[0]) + ')"></i>' + esc(x[1]) + '</span>').join('') + '</figcaption></figure>').join('')).join('') +
       '<h3 class="k">Sources</h3><ul class="src">' + l.sources.map(s => '<li><a href="' + esc(s[1]) + '" target="_blank" rel="noopener">' + esc(s[0]) + '</a> <span class="lvchip">' + esc(s[2]) + '</span></li>').join('') + '</ul></article>' +
-      '<section aria-labelledby="lq-h" style="display:grid;gap:12px"><div class="section-h"><h2 id="lq-h">Check yourself</h2><span class="hint">' + qs.length + ' questions</span></div>' + qs.map(q => questionCard(q, PICKS[q.id], 'pick')).join('') + '</section>' +
+      '<section aria-labelledby="lq-h" style="display:grid;gap:12px"><div class="section-h"><h2 id="lq-h">Check yourself</h2><span class="hint">' + qs.length + ' questions</span></div>' + qs.map(q => questionCard(q, PICKS[q.id], 'pick')).join('') + hiddenNote(qAll.length - qs.length) + '</section>' +
       '<div class="row">' + (next ? '<a class="btn btn-primary" href="#lesson-' + esc(next.id) + '">Next: ' + esc(next.title) + '</a>' : '<button class="btn btn-primary" data-act="practice" data-id="' + d.id + '">Practice 10 from the deck</button>') + '<a class="btn" href="#deck-' + esc(d.id) + '">Back to the deck</a></div>' + foot() + '</main>';
   }
   // Practice: ten questions, unseen first, then last-wrong, then the rest; shuffled within each group.
   function practiceSet(d) {
     const sh = a => { a = a.slice(); for (let i = a.length - 1; i > 0; i--) { const j = Math.floor(Math.random() * (i + 1)); [a[i], a[j]] = [a[j], a[i]]; } return a; };
-    const g = k => d.questions.filter(q => { const r = qRec(q.id); return k === 0 ? !r : k === 1 ? r && r.last === 0 : r && r.last === 1; });
+    const g = k => vis(d.questions).filter(q => { const r = qRec(q.id); return k === 0 ? !r : k === 1 ? r && r.last === 0 : r && r.last === 1; });
     return [].concat(sh(g(0)), sh(g(1)), sh(g(2))).slice(0, 10).map(q => q.id);
   }
   function renderPractice() {
@@ -254,7 +282,7 @@ figure.lfig { margin: 0; display: grid; gap: 6px; }
     app.innerHTML = host.header('Practice · ' + d.title, 'deck', d.id, 'Back to the deck', (i + 1) + '/' + ids.length) + '<main class="wrap" style="display:grid;gap:12px">' + questionCard(q, pick, 'ppick') +
       (pick !== undefined ? '<div class="row"><button class="btn btn-primary" data-act="pnext">' + (i + 1 < ids.length ? 'Next question' : 'See the result') + '</button><a class="btn btn-quiet" href="#lesson-' + esc(q.lesson) + '">Open the lesson</a></div>' : '') + foot() + '</main>';
   }
-  const cardList = () => { const d = deckById(VIEW.id); return d ? d.cards.filter(c => !VIEW.again || (decks.get(c.id) || {}).mark === 'again') : []; };
+  const cardList = () => { const d = deckById(VIEW.id); return d ? vis(d.cards).filter(c => !VIEW.again || (decks.get(c.id) || {}).mark === 'again') : []; };
   function renderCards() {
     const d = deckById(VIEW.id); if (!d) return host.go('lane', { id: 'quality' });
     const list = cardList(), i = Math.min(VIEW.i || 0, Math.max(0, list.length - 1)), c = list[i], st = deckStats(d);
@@ -623,6 +651,7 @@ figure.lfig { margin: 0; display: grid; gap: 6px; }
     home() { history.replaceState(null, '', location.pathname + location.search); host.go('home', {}); },
     lane(t) { const l = laneById(t.dataset.id); if (!l || !l.active) return; prefs.put('lane', { ts: Date.now(), v: l.id }); history.replaceState(null, '', '#lane-' + l.id); host.go('lane', { id: l.id }); },
     deck(t) { history.replaceState(null, '', '#deck-' + t.dataset.id); host.go('deck', { id: t.dataset.id }); },
+    level(t) { const id = t.dataset.id, on = levels(), i = on.indexOf(id); if (i === -1) on.push(id); else if (on.length > 1) on.splice(i, 1); else return host.toast('Keep at least one level on.'); prefs.put('levels', { ts: Date.now(), v: ALL.filter(x => on.indexOf(x) !== -1) }); host.keepScroll(); },
     theme(t) { try { localStorage.setItem(THEME_KEY, t.dataset.id); } catch (e) { /* storage unavailable */ } applyTheme(t.dataset.id); host.keepScroll(); },
     pick(t) { const q = QS[t.dataset.id]; if (!q || PICKS[q.id] !== undefined) return; const j = +t.dataset.j; PICKS[q.id] = j; saveAnswer(q.id, j === q.answer); host.keepScroll(); },
     practice(t) { const d = deckById(t.dataset.id); history.replaceState(null, '', '#practice-' + d.id); host.go('practice', { deck: d.id, ids: practiceSet(d), i: 0, picks: {} }); },

@@ -80,6 +80,7 @@ function compute() {
   Object.assign(N, require('./phase2.js').compute2());
   N.mk = require('./mock.js').computeMock(N);   // held-out mock pool (Phase 2b)
   Object.assign(N, require('./supply.js').computeSupply());   // supply chain decks (Phase 3)
+  Object.assign(N, require('./coo.js').computeCoo());   // COO lane, CPO deck, packets and role-play (Phase 4)
   return N;
 }
 
