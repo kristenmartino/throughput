@@ -202,12 +202,12 @@ figure.lfig { margin: 0; display: grid; gap: 6px; }
   function renderDeck() {
     const d = deckById(VIEW.id); if (!d) return host.go('lane', { id: 'quality' });
     const st = deckStats(d);
-    app.innerHTML = host.header(d.title, 'lane', 'quality', 'Back to the Quality lane', d.scored + ' of 100') +
-      '<main class="wrap"><section class="card" style="display:grid;gap:10px"><div class="row"><span class="cchip draft">Draft</span><span class="lvchip">ASQ BoK section ' + esc(d.bok) + '</span></div>' +
+    app.innerHTML = host.header(d.title, 'lane', d.lane, 'Back to the ' + d.laneShort + ' lane', d.weight ? d.weight + '% of the exam' : d.scored + ' of 100') +
+      '<main class="wrap"><section class="card" style="display:grid;gap:10px"><div class="row"><span class="cchip draft">Draft</span><span class="lvchip">' + esc(d.bokLabel + ' ' + d.bok) + '</span></div>' +
       '<div class="stat"><div><span class="v">' + st.right + '/' + st.n + '</span><span class="l">questions right (last try)</span></div><div><span class="v">' + st.got + '/' + st.cards + '</span><span class="l">cards marked Got it</span></div></div>' +
       '<div class="row"><button class="btn btn-primary" data-act="practice" data-id="' + d.id + '">Practice 10</button><a class="btn" href="#cards-' + d.id + '">Recall cards</a></div>' +
       '<p class="note" id="deck-saved">' + esc(decks.statusText()) + '</p></section>' +
-      '<section aria-labelledby="ls-h"><div class="section-h"><h2 id="ls-h">Lessons</h2><span class="hint">In Body of Knowledge order</span></div><div class="items">' +
+      '<section aria-labelledby="ls-h"><div class="section-h"><h2 id="ls-h">Lessons</h2><span class="hint">' + (d.lane === 'quality' ? 'In Body of Knowledge order' : 'In ASCM module outline order') + '</span></div><div class="items">' +
       d.lessons.map(l => { const s = lessonStats(d, l); return itemRow('#lesson-' + l.id, l.title, l.bok + ' · ' + s.n + ' questions · ' + s.right + ' right', l.status); }).join('') + '</div></section>' + foot() + '</main>';
   }
   function saveAnswer(id, right) { const r = qRec(id) || { n: 0, right: 0 }; decks.put(id, { ts: Date.now(), n: (r.n || 0) + 1, right: (r.right || 0) + (right ? 1 : 0), last: right ? 1 : 0 }); }
@@ -225,7 +225,7 @@ figure.lfig { margin: 0; display: grid; gap: 6px; }
     const d = deckById(l.deck), i = d.lessons.findIndex(x => x.id === l.id), next = d.lessons[i + 1];
     const qs = d.questions.filter(q => q.lesson === l.id);
     app.innerHTML = host.header(d.title, 'deck', d.id, 'Back to the ' + d.title + ' deck', (i + 1) + ' of ' + d.lessons.length) +
-      '<main class="wrap"><article class="card prose" style="display:grid;gap:12px"><div class="row">' + draftChip(l) + '<span class="lvchip">BoK ' + esc(l.bok) + '</span></div><h2 class="ttl" style="font-size:20px">' + esc(l.title) + '</h2>' +
+      '<main class="wrap"><article class="card prose" style="display:grid;gap:12px"><div class="row">' + draftChip(l) + '<span class="lvchip">' + (d.lane === 'quality' ? 'BoK ' : 'Section ') + esc(l.bok) + '</span></div><h2 class="ttl" style="font-size:20px">' + esc(l.title) + '</h2>' +
       l.body.map((p, k) => '<p>' + esc(p) + '</p>' + (l.figs || []).filter(g => g.after === k).map(g => '<figure class="lfig">' + g.svg +   // built from checked numbers in build.js (math/figs.js)
         '<figcaption class="legend">' + g.legend.map(x => '<span><i style="background:var(' + esc(x[0]) + ')"></i>' + esc(x[1]) + '</span>').join('') + '</figcaption></figure>').join('')).join('') +
       '<h3 class="k">Sources</h3><ul class="src">' + l.sources.map(s => '<li><a href="' + esc(s[1]) + '" target="_blank" rel="noopener">' + esc(s[0]) + '</a> <span class="lvchip">' + esc(s[2]) + '</span></li>').join('') + '</ul></article>' +
@@ -669,7 +669,7 @@ figure.lfig { margin: 0; display: grid; gap: 6px; }
     if ((m = /^#deck-([a-z0-9-]+)$/.exec(h || '')) && deckById(m[1])) { host.go('deck', { id: m[1] }); return true; }
     if ((m = /^#cards-([a-z0-9-]+)$/.exec(h || '')) && deckById(m[1])) { host.go('cards', { id: m[1], i: 0 }); return true; }
     if ((m = /^#practice-([a-z0-9-]+)$/.exec(h || '')) && deckById(m[1])) { const d = deckById(m[1]); host.go('practice', { deck: d.id, ids: practiceSet(d), i: 0, picks: {} }); return true; }
-    if ((m = /^#lesson-([a-z]+-\d+)$/.exec(h || '')) && LESSONS[m[1]]) { host.go('lesson', { id: m[1] }); return true; }
+    if ((m = /^#lesson-([a-z][a-z0-9]*-\d+)$/.exec(h || '')) && LESSONS[m[1]]) { host.go('lesson', { id: m[1] }); return true; }
     if (h === '#beer-game') { host.go('beer', {}); return true; }
     if (h === '#inventory-sim') { host.go('inv', {}); return true; }
     if (h === '#bottleneck-sim') { host.go('bn', {}); return true; }

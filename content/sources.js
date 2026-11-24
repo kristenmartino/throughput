@@ -70,5 +70,9 @@ module.exports = {
   cscpoutline: ['ASCM: 2026 CSCP module content outline', 'https://www.ascm.org/globalassets/ascm_website_assets/docs/credentials/2026-cscp-module-content-outline.pdf', 'Read'],
   mitEoq: ['MIT OCW 15.772J D-Lab: Supply Chains (Fall 2014), lecture 13: inventory and EOQ', 'https://ocw.mit.edu/courses/15-772j-d-lab-supply-chains-fall-2014/b0b41cc09a83ffa4cf1335ac65f5f9ab_MIT15_772JF14_Lec13.pdf', 'Read'],
   little: ['Little (2011), Little\'s Law as Viewed on Its 50th Anniversary, Operations Research 59(3)', 'https://people.cs.umass.edu/~emery/classes/cmpsci691st/readings/OS/Littles-Law-50-Years-Later.pdf', 'Read'],
+  mitMrp: ['Gershwin, MIT OCW 2.854 Introduction to Manufacturing Systems (Fall 2016): Material Requirements Planning', 'https://ocw.mit.edu/courses/2-854-introduction-to-manufacturing-systems-fall-2016/4eec617bb52d64f4ea1bed6d9905bc00_MIT2_854F16_MatrialRequire.pdf', 'Read'],
+  ratedCap: ['Rated capacity = available time × utilization × efficiency (APICS dictionary wording, via CPIM study notes)', 'https://open-exam-prep.com/study-guides/cpim/detailed-schedules/capacity-types-safety-capacity-labor', 'Relayed (search text)'],
+  abcStev: ['Stevenson, Operations Management (11th ed.), the A-B-C approach (excerpt)', 'https://www.scribd.com/document/467769305/lectura-ABC-ingles', 'Relayed (search text)'],
+  ltVar: ['Bricker, University of Iowa: Reorder point (lead-time demand with variable lead time)', 'https://user.engineering.uiowa.edu/~dbricker/Lecture_Slides/Reorder_Point.pdf', 'Relayed (search text)'],
   willems: ['Willems (2001), Inventory Basics (from S. C. Graves\'s notes), MIT 15.762J materials', 'https://dspace.mit.edu/bitstream/handle/1721.1/71720/15-762j-spring-2005/contents/lecture-notes/inventory_notes.pdf', 'Read']
 };

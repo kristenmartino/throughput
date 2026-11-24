@@ -44,12 +44,19 @@ const FL = NUM.flat(NUM.compute()), used = new Map();
 const fill = (s, w) => { try { String(s).replace(/\{\{([a-z0-9.]+)(?:\|([^}]+))?\}\}/gi, (m, k, f) => { used.set(k + '|' + (f || '0'), [k, f || '0']); return ''; }); return NUM.fill(s, FL); } catch (e) { errors.push(w + ': ' + e.message); return s; } };
 const LEVELS = ['Remember', 'Understand', 'Apply', 'Analyze', 'Evaluate', 'Create'];
 const OUTLINE = { overview: { counts: [3, 3, 3, 2, 2, 3], cards: 16 }, define: { counts: [3, 3, 2, 4, 4, 4, 3, 4, 3], cards: 20 }, measure: { counts: [2, 4, 2, 4, 3, 4, 3, 2, 6], cards: 24 },
-  analyze: { counts: [3, 3, 3, 4, 4, 3, 3, 2, 2], cards: 22 }, improve: { counts: [4, 4, 3, 3, 3, 4, 3], cards: 20 }, control: { counts: [4, 2, 5, 4, 3, 3, 2], cards: 22 } };
+  analyze: { counts: [3, 3, 3, 4, 4, 3, 3, 2, 2], cards: 22 }, improve: { counts: [4, 4, 3, 3, 3, 4, 3], cards: 20 }, control: { counts: [4, 2, 5, 4, 3, 3, 2], cards: 22 },
+  // Supply chain (Phase 3, approved Nov 24): questions, lessons and cards in ASCM's module weights (150 / 48 / 112 by
+  // largest remainder, ties to the heavier module); lessons follow the sections of ASCM's 2026 module outline.
+  sc1: { counts: [3, 3, 2, 4, 3], cards: 11 }, sc2: { counts: [3, 4, 3, 3, 2], cards: 11 }, sc3: { counts: [3, 4, 3, 3, 3, 4, 3, 3], cards: 19 },
+  sc4: { counts: [3, 4, 3, 3, 3, 4, 3, 3, 3], cards: 22 }, sc5: { counts: [3, 4, 3, 3], cards: 10 }, sc6: { counts: [3, 4, 3, 3, 3, 3, 3, 3], cards: 19 },
+  sc7: { counts: [3, 3, 3, 3, 3], cards: 11 }, sc8: { counts: [3, 3, 3, 3], cards: 9 } };
+{ const t = k => ['sc1', 'sc2', 'sc3', 'sc4', 'sc5', 'sc6', 'sc7', 'sc8'].map(id => k === 'q' ? OUTLINE[id].counts.reduce((a, b) => a + b, 0) : k === 'l' ? OUTLINE[id].counts.length : OUTLINE[id].cards);
+  if (t('q').join() !== '15,15,26,29,13,25,15,12' || t('l').join() !== '5,5,8,9,4,8,5,4' || t('c').join() !== '11,11,19,22,10,19,11,9') errors.push('supply chain outline must follow the ASCM weights: questions ' + t('q') + ', lessons ' + t('l') + ', cards ' + t('c')); }
 const FIGS = require('./math/figs.js'), NUMS = NUM.compute();
 const words = s => String(s || '').trim().split(/\s+/).filter(Boolean).length;
-const DECKS = ['overview', 'define', 'measure', 'analyze', 'improve', 'control'].filter(id => fs.existsSync(path.join(here, 'content', id + '.js'))).map(id => require('./content/' + id + '.js')).map(src => {
-  const d = src.deck, o = OUTLINE[d.id], w = 'deck ' + d.id;
-  if (!o || sectionIds.indexOf('quality-' + d.id) === -1) errors.push(w + ': no section quality-' + d.id);
+const DECKS = ['overview', 'define', 'measure', 'analyze', 'improve', 'control', 'sc4', 'sc1', 'sc5', 'sc2', 'sc3', 'sc7', 'sc6', 'sc8'].filter(id => fs.existsSync(path.join(here, 'content', id + '.js'))).map(id => require('./content/' + id + '.js')).map(src => {
+  const d = src.deck, o = OUTLINE[d.id], w = 'deck ' + d.id, lane = d.lane || 'quality';
+  if (!o || sectionIds.indexOf(lane + '-' + d.id) === -1) errors.push(w + ': no section ' + lane + '-' + d.id);
   if (!ID.test(d.id)) errors.push(w + ': bad id');
   claim('deck-' + d.id, w);
   const lessons = src.lessons.map((l, i) => {
@@ -94,7 +101,9 @@ const DECKS = ['overview', 'define', 'measure', 'analyze', 'improve', 'control']
     return { id: c.id, front: fill(c.front, cw), back: fill(c.back, cw), status: c.status === undefined ? 'Draft' : c.status };
   });
   if (o && cards.length !== o.cards) errors.push(w + ': ' + o.cards + ' cards in the approved outline, got ' + cards.length);
-  return { id: d.id, title: d.title, bok: d.bok, scored: d.scored, lessons, questions, cards, keyPositions: pos };
+  const ln = L.lanes.find(x => x.id === lane), sec = (L.sections[lane] || []).find(x => x.id === d.id) || {};
+  return { id: d.id, title: d.title, bok: d.bok, scored: d.scored, weight: sec.weight, lane, laneShort: ln ? ln.short : lane,
+    bokLabel: lane === 'quality' ? 'ASQ BoK section' : 'CSCP module', lessons, questions, cards, keyPositions: pos };
 });
 for (const dk of DECKS) for (const t of [].concat(...dk.lessons.map(l => l.body.concat(l.figs.map(g => g.svg))), ...dk.questions.map(q => [q.stem, q.why].concat(q.options, Object.values(q.whyNot))), ...dk.cards.map(c => [c.front, c.back])))
   if (/\{\{|NaN|undefined|Infinity/.test(t)) errors.push('unfilled or bad number in: ' + t.slice(0, 80));
@@ -248,6 +257,6 @@ const out = tpl.replace('__SHELL_CSS__', () => read('vendor/study-kit/shell.css'
 fs.mkdirSync(path.join(here, 'build'), { recursive: true });
 fs.writeFileSync(path.join(here, 'build', 'index.html'), out);
 fs.writeFileSync(path.join(here, 'build', 'bank.json'), JSON.stringify(bank));   // for the blind-check export; not published
-console.log('study-kit', kitVersion, '· lanes', laneIds.length, '(active: quality) · sections', sectionIds.length,
+console.log('study-kit', kitVersion, '· lanes', laneIds.length, '(active: quality, supply-chain) · sections', sectionIds.length,
   '· decks', DECKS.map(d => d.id + ' ' + d.lessons.length + 'L/' + d.questions.length + 'Q/' + d.cards.length + 'C keys ' + d.keyPositions.join('/')).join(', '),
   '· math', mc.n + ' values, JS = Python', '· bytes', Buffer.byteLength(out));

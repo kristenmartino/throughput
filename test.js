@@ -147,8 +147,11 @@ function ok(c, m) { if (c) pass++; else { fails.push(m); console.log('FAIL', m);
     for (const id of ['overview', 'define', 'measure', 'analyze', 'improve', 'control']) ok(await page.locator('#quality-' + id + ' a[href="#deck-' + id + '"]').count() === 1, 'lane links the ' + id + ' deck');
     ok(await page.locator('#quality-mock a[href="#mock"]').count() === 1 && await page.locator('.secrow .soon').count() === 0, 'lane links the mock; no section shows "Phase n" any more');
     // Approved outlines: lessons / questions / cards per deck (Phase 1 and Phase 2 proposals)
-    const OUT = { overview: [6, 16, 16], define: [9, 30, 20], measure: [9, 30, 24], analyze: [9, 27, 22], improve: [7, 24, 20], control: [7, 23, 22] };
-    ok(BANK.decks.map(d => d.id).join() === 'overview,define,measure,analyze,improve,control', 'decks in BoK order');
+    const OUT = { overview: [6, 16, 16], define: [9, 30, 20], measure: [9, 30, 24], analyze: [9, 27, 22], improve: [7, 24, 20], control: [7, 23, 22],
+      // Phase 3: ASCM weights (lessons / questions / cards)
+      sc1: [5, 15, 11], sc2: [5, 15, 11], sc3: [8, 26, 19], sc4: [9, 29, 22], sc5: [4, 13, 10], sc6: [8, 25, 19], sc7: [5, 15, 11], sc8: [4, 12, 9] };
+    ok(BANK.decks.filter(d => d.lane === 'quality').map(d => d.id).join() === 'overview,define,measure,analyze,improve,control', 'quality decks in BoK order');
+    ok(BANK.decks.filter(d => d.lane === 'supply-chain').every(d => /^sc[1-8]$/.test(d.id)), 'supply chain decks are sc1..sc8');
     for (const d of BANK.decks) {
       await page.goto(URL + '#deck-' + d.id); await page.waitForSelector('.itemrow');
       ok(await page.locator('main .itemrow').count() === OUT[d.id][0], d.id + ': ' + OUT[d.id][0] + ' lessons listed');
@@ -161,7 +164,7 @@ function ok(c, m) { if (c) pass++; else { fails.push(m); console.log('FAIL', m);
         ok(n === d.questions.filter(q => q.lesson === l.id).length, l.id + ': its questions shown (' + n + ')');
         ok(await page.locator('.src li').count() === l.sources.length && l.sources.length > 0, l.id + ': sources listed');
         ok(await page.locator('figure.lfig svg.fig').count() === (l.figs || []).length, l.id + ': ' + (l.figs || []).length + ' figure(s) drawn');
-        if (['overview', 'analyze', 'improve', 'control'].includes(d.id)) {   // Phase 2: every keyed answer is marked right in the page
+        if (['overview', 'analyze', 'improve', 'control'].includes(d.id) || d.lane === 'supply-chain') {   // Phase 2 and 3: every keyed answer is marked right in the page
           for (const q of d.questions.filter(x => x.lesson === l.id)) {
             await page.locator('[data-act="pick"][data-id="' + q.id + '"][data-j="' + q.answer + '"]').click();
             ok(/Right/.test(await page.locator('#q-' + q.id.toLowerCase() + ' .verdict').textContent()), q.id + ': keyed answer marked right');
