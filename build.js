@@ -36,13 +36,15 @@ for (const lane in L.sections) {
 { const q = (L.sections.quality || []).filter(s => s.kind === 'Deck').map(s => s.questions);
   if (q.join() !== '11,20,20,18,16,15' || q.reduce((a, b) => a + b, 0) !== 100) errors.push('quality decks must carry the BoK counts 11,20,20,18,16,15 (got ' + q.join() + ')'); }
 
-// ---- Decks (Phase 1: Define and Measure; outline approved Nov 24)
+// ---- Decks (Phase 1: Define and Measure; Phase 2: Overview, Analyze, Improve, Control; outlines approved Nov 24)
 const FL = NUM.flat(NUM.compute()), used = new Map();
 const fill = (s, w) => { try { String(s).replace(/\{\{([a-z0-9.]+)(?:\|([^}]+))?\}\}/gi, (m, k, f) => { used.set(k + '|' + (f || '0'), [k, f || '0']); return ''; }); return NUM.fill(s, FL); } catch (e) { errors.push(w + ': ' + e.message); return s; } };
 const LEVELS = ['Remember', 'Understand', 'Apply', 'Analyze', 'Evaluate', 'Create'];
-const OUTLINE = { define: { counts: [3, 3, 2, 4, 4, 4, 3, 4, 3], cards: 20 }, measure: { counts: [2, 4, 2, 4, 3, 4, 3, 2, 6], cards: 24 } };
+const OUTLINE = { overview: { counts: [3, 3, 3, 2, 2, 3], cards: 16 }, define: { counts: [3, 3, 2, 4, 4, 4, 3, 4, 3], cards: 20 }, measure: { counts: [2, 4, 2, 4, 3, 4, 3, 2, 6], cards: 24 },
+  analyze: { counts: [3, 3, 3, 4, 4, 3, 3, 2, 2], cards: 22 }, improve: { counts: [4, 4, 3, 3, 3, 4, 3], cards: 20 }, control: { counts: [4, 2, 5, 4, 3, 3, 2], cards: 22 } };
+const FIGS = require('./math/figs.js'), NUMS = NUM.compute();
 const words = s => String(s || '').trim().split(/\s+/).filter(Boolean).length;
-const DECKS = [require('./content/define.js'), require('./content/measure.js')].map(src => {
+const DECKS = ['overview', 'define', 'measure', 'analyze', 'improve', 'control'].filter(id => fs.existsSync(path.join(here, 'content', id + '.js'))).map(id => require('./content/' + id + '.js')).map(src => {
   const d = src.deck, o = OUTLINE[d.id], w = 'deck ' + d.id;
   if (!o || sectionIds.indexOf('quality-' + d.id) === -1) errors.push(w + ': no section quality-' + d.id);
   if (!ID.test(d.id)) errors.push(w + ': bad id');
@@ -53,7 +55,8 @@ const DECKS = [require('./content/define.js'), require('./content/measure.js')].
     if (l.status !== 'Draft' && l.status !== '') errors.push(lw + ': status must be Draft or empty');
     for (const p of l.body) if (!/\([^()]*\b(Read|Relayed|Inferred|Computed|computed)\b[^()]*\)\s*$/.test(p)) errors.push(lw + ': every paragraph needs a tier tag: ' + p.slice(0, 60));
     for (const k of l.sources) if (!SRC[k]) errors.push(lw + ': unknown source ' + k);
-    return { id: l.id, title: l.title, bok: l.bok, status: l.status, body: l.body.map(p => fill(p, lw)), sources: l.sources.map(k => SRC[k]).filter(Boolean) };
+    const figs = (l.figs || []).map(g => { if (!(g.after >= 0 && g.after < l.body.length) || FIGS.kinds.indexOf(g.kind) === -1) { errors.push(lw + ': bad figure ' + JSON.stringify(g)); return null; } return Object.assign({ after: g.after, kind: g.kind }, FIGS.draw(g.kind, NUMS)); }).filter(Boolean);
+    return { id: l.id, title: l.title, bok: l.bok, status: l.status, body: l.body.map(p => fill(p, lw)), sources: l.sources.map(k => SRC[k]).filter(Boolean), figs };
   });
   if (o && lessons.length !== o.counts.length) errors.push(w + ': ' + o.counts.length + ' lessons in the approved outline, got ' + lessons.length);
   const pos = [0, 0, 0, 0];
@@ -73,7 +76,8 @@ const DECKS = [require('./content/define.js'), require('./content/measure.js')].
     return out;
   });
   if (o) o.counts.forEach((n, i) => { const got = questions.filter(q => q.lesson === d.prefix + '-' + (i + 1)).length; if (got !== n) errors.push(w + ': lesson ' + d.prefix + '-' + (i + 1) + ' needs ' + n + ' questions (outline), has ' + got); });
-  if (pos.some(n => n < 5 || n > 10)) errors.push(w + ': keyed answers should spread over A–D (got ' + pos.join('/') + ')');
+  { const n = questions.length, lo = Math.floor(0.2 * n), hi = Math.ceil(0.3 * n);   // each of A–D keyed 20–30% of the time
+    if (pos.some(k => k < lo || k > hi)) errors.push(w + ': keyed answers should spread over A–D, each ' + lo + '–' + hi + ' (got ' + pos.join('/') + ')'); }
   const cards = src.cards.map((c, i) => {
     const cw = 'card ' + c.id; claim(c.id, cw);
     if (c.id !== d.cPrefix + '-' + String(i + 1).padStart(2, '0') || !c.front || !c.back) errors.push(cw + ': id ' + d.cPrefix + '-nn in order, front and back');
@@ -82,8 +86,25 @@ const DECKS = [require('./content/define.js'), require('./content/measure.js')].
   if (o && cards.length !== o.cards) errors.push(w + ': ' + o.cards + ' cards in the approved outline, got ' + cards.length);
   return { id: d.id, title: d.title, bok: d.bok, scored: d.scored, lessons, questions, cards, keyPositions: pos };
 });
-for (const dk of DECKS) for (const t of [].concat(...dk.lessons.map(l => l.body), ...dk.questions.map(q => [q.stem, q.why].concat(q.options, Object.values(q.whyNot))), ...dk.cards.map(c => [c.front, c.back])))
+for (const dk of DECKS) for (const t of [].concat(...dk.lessons.map(l => l.body.concat(l.figs.map(g => g.svg))), ...dk.questions.map(q => [q.stem, q.why].concat(q.options, Object.values(q.whyNot))), ...dk.cards.map(c => [c.front, c.back])))
   if (/\{\{|NaN|undefined|Infinity/.test(t)) errors.push('unfilled or bad number in: ' + t.slice(0, 80));
+
+// ---- Timed mock (route #mock; option A approved Nov 24): 110 questions drawn from the deck bank by section.
+// ASQ: 100 scored + 10 unscored, 4 h 18 min (Read). Scored split 11/20/20/18/16/15 (Read, BoK). ASQ does not say how the
+// 10 unscored items are spread, so they are drawn in the same ratio (largest remainder) and every item is scored (Inferred).
+const MOCK = (() => {
+  const secs = (L.sections.quality || []).filter(x => x.kind === 'Deck'), total = 110, scored = 100;
+  const extra = secs.map(x => x.questions * (total - scored) / scored), base = extra.map(Math.floor);
+  let left = (total - scored) - base.reduce((a, b) => a + b, 0);
+  extra.map((v, i) => [v - base[i], i]).sort((a, b) => b[0] - a[0] || a[1] - b[1]).forEach(([, i]) => { if (left > 0) { base[i]++; left--; } });
+  const draw = {}; secs.forEach((x, i) => { draw[x.id] = x.questions + base[i]; });
+  for (const id in draw) { const d = DECKS.find(k => k.id === id); if (!d) errors.push('mock: deck ' + id + ' missing'); else if (d.questions.length < draw[id]) errors.push('mock: deck ' + id + ' has ' + d.questions.length + ' questions, mock draws ' + draw[id]); }
+  if (Object.values(draw).reduce((a, b) => a + b, 0) !== total) errors.push('mock: draw does not total 110');
+  return { id: 'mock', title: 'Timed mock', status: 'Draft', minutes: 4 * 60 + 18, total, draw, order: secs.map(x => x.id),
+    scoring: 'ASQ reports a scaled score and certifies at 550 of a possible 750. The raw number of correct answers needed is set for each exam form by a Modified Angoff cut-score study and is not published, so this mock shows percent right by section and no pass line.',
+    sources: ['asqexam', 'asqscore', 'asqgrade', 'bok'].map(k => SRC[k]) };
+})();
+claim('mock', 'mock');
 
 // ---- Numbers and the Beer Game: JS against Python (math/check.js)
 const mc = require('./math/check.js').check(Array.from(used.values()));
@@ -103,7 +124,7 @@ const PUB = path.join(here, 'published-ids.json');
 const pub = JSON.parse(fs.readFileSync(PUB, 'utf8'));
 const now = { lanes: laneIds, sections: sectionIds, craft: craft.ids, sims: sims.ids,
   lessons: [].concat(...DECKS.map(d => d.lessons.map(l => l.id))), questions: [].concat(...DECKS.map(d => d.questions.map(q => q.id))),
-  cards: [].concat(...DECKS.map(d => d.cards.map(c => c.id))), decks: DECKS.map(d => d.id), games: [BEER.id] };
+  cards: [].concat(...DECKS.map(d => d.cards.map(c => c.id))), decks: DECKS.map(d => d.id), games: [BEER.id], mocks: [MOCK.id] };
 for (const k of Object.keys(pub)) if (k !== 'note' && !(k in now)) errors.push('published-ids.json has an unknown kind ' + k);
 for (const k of Object.keys(now)) for (const id of (pub[k] || [])) if (now[k].indexOf(id) === -1) errors.push('published ' + k + ' id ' + id + ' is missing; links depend on it');
 if (errors.length) { console.error(errors.join('\n')); process.exit(1); }
@@ -120,7 +141,7 @@ const ref = { average: mc.beer.all_average, benchSeat: mc.beer.bench_in_seat }; 
 const BG = require('./math/beer.js');
 const beer = { id: BEER.id, title: BEER.title, status: BEER.status, blurb: BEER.blurb, briefing: BEER.briefing, lesson: BEER.lesson, sources: BEER.sources.map(k => SRC[k]),
   refTeam2: { average: BG.stats(ref.average).team2, bench: BG.stats(mc.beer.all_bench).team2 }, benchAll2: BG.stats(mc.beer.all_bench).stages.map(s => s.cost2), benchTeam2: ref.benchSeat.map(g => BG.stats(g).team2) };
-const bank = { lanes: L.lanes, sections: L.sections, exam: L.exam, craft: craft.packets, runs: sims.runs, roleplays: sims.roleplays, kitVersion, decks: DECKS, beer };
+const bank = { lanes: L.lanes, sections: L.sections, exam: L.exam, craft: craft.packets, runs: sims.runs, roleplays: sims.roleplays, kitVersion, decks: DECKS, beer, mock: MOCK };
 const LS = String.fromCharCode(0x2028), PS = String.fromCharCode(0x2029);
 const json = JSON.stringify(bank).replace(/<\//g, '<\\/').split(LS).join('\\u2028').split(PS).join('\\u2029');
 const tpl = read('index.src.html');

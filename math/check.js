@@ -20,6 +20,12 @@ function check(usedFormats) {
     if (Math.abs(J[k] - P[k]) > 1e-7 * Math.max(1, Math.abs(P[k]))) errs.push('number ' + k + ': JS ' + J[k] + ' vs Python ' + P[k]);
   }
   for (const [k, f] of (usedFormats || []).filter(u => u[0] in J)) { n++; if (NJ.fmt(J[k], f) !== NJ.fmt(P[k], f)) errs.push('number ' + k + '|' + f + ' prints ' + NJ.fmt(J[k], f) + ' in JS and ' + NJ.fmt(P[k], f) + ' in Python'); }
+  // ---- control chart constants against NIST's table (Read, e-Handbook 6.3.2.1, Nov 24): A2, D3, D4 printed to 3 decimals.
+  //      Allowed difference 0.0011: NIST prints D4 = 2.115 at n = 5, where 1 + 3 d3/d2 = 2.1145. c4(10) = 0.9727 (NIST 6.3.2).
+  const NIST = { 2: [1.880, 0, 3.267], 3: [1.023, 0, 2.575], 4: [0.729, 0, 2.282], 5: [0.577, 0, 2.115], 6: [0.483, 0, 2.004], 7: [0.419, 0.076, 1.924], 8: [0.373, 0.136, 1.864], 9: [0.337, 0.184, 1.816], 10: [0.308, 0.223, 1.777] };
+  for (const nn in NIST) ['A2', 'D3', 'D4'].forEach((c, i) => { n++; if (Math.abs(J['k.' + c + 'n' + nn] - NIST[nn][i]) > 0.0011) errs.push('constant ' + c + ' n=' + nn + ': computed ' + J['k.' + c + 'n' + nn] + ', NIST ' + NIST[nn][i]); });
+  n++; if (Math.abs(J['k.c4n10'] - 0.9727) > 0.00005) errs.push('c4(10) computed ' + J['k.c4n10'] + ', NIST 0.9727');
+  n++; if (Math.abs(J['k.d2n2'] - 1.128) > 0.0005) errs.push('d2(2) computed ' + J['k.d2n2'] + ', NIST 1.128');
   // ---- beer
   let seed = 7; const rnd = () => (seed = (seed * 1103515245 + 12345) % 2147483648) / 2147483648;
   const games = []; for (let k = 0; k < 200; k++) games.push({ seat: k % 4, orders: Array.from({ length: 32 - (k % 7 === 0 ? 5 : 0) }, () => Math.floor(rnd() * 31)) });
