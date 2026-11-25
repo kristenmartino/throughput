@@ -266,6 +266,14 @@ const dmaic = (() => {
   if (!(noControl.counted === 0 && noControl.score < best8.score)) errors.push('dmaic lesson 6: without a control plan finance should count nothing');
   if (!(when(b6.moves, 8) < when(b8.moves, 8) && when(b6.moves, 7) === when(b8.moves, 7))) errors.push('dmaic lesson 4: skipping pilots should bring only the setup fix forward');
   if (!(piloted6.counted < best6.counted && piloted6.counted > 0)) errors.push('dmaic lesson 5: the piloted 6-month plan should count less, not nothing');
+  { // lesson 1 says several plans tie on the best score: the best plan with its control plan a month earlier ties
+    const alt = b8.moves.map(x => x.filter(m => m !== 10)), ci = b8.moves.findIndex(x => x.includes(10));
+    if (ci > 0 && alt[ci - 1].length < R.perMonth) { alt[ci - 1] = alt[ci - 1].concat([10]).sort((x, y) => x - y); if (run(alt).score !== best8.score) errors.push('dmaic lesson 1: expected a tie with the control plan a month earlier'); }
+    else errors.push('dmaic lesson 1: no room to test the tie');
+    // briefing: two unpiloted fixes in one month cost the next month's output once
+    const two = DM.play({ moves: [[7, 8], []] }, { months: 2 }); if (two.waiting >= 0 || two.h.started[1] !== R.units - R.disruptUnits) errors.push('dmaic briefing: two unpiloted fixes should disrupt once');
+    if (noMeasure.counted >= best8.counted) errors.push('dmaic lesson 3: the hunch plan should count less');
+  }
   const names = ['Measure', 'Analyze fixture wear', 'Analyze setup', 'Analyze bar stock', 'Pilot the fixture-wear fix', 'Pilot the setup fix', 'Pilot the bar-stock fix', 'Fix fixture wear', 'Fix setup', 'Fix bar stock', 'Control plan'];
   const planText = mv => mv.map((s, t) => s.length ? 'month ' + (t + 1) + ', ' + s.map(m => names[m].charAt(0).toLowerCase() + names[m].slice(1)).join(' and ') : null).filter(Boolean).join('; ');
   const pct = (x, d) => (100 * x).toFixed(d === undefined ? 1 : d) + '%', base = R.defects.reduce((a, b) => a + b, 0);
@@ -273,8 +281,8 @@ const dmaic = (() => {
     baseDefects: base.toLocaleString('en-US'), baseRate: pct(base / R.units), baseMonth: usd(nothing.baseMonth), baseRun: usd(nothing.score),
     measureCost: usd(R.cost.measure), analyzeCost: usd(R.cost.analyze), pilotCost: usd(R.cost.pilot), controlCost: usd(R.cost.control),
     implCosts: R.causes.slice(0, 3).map((c, i) => c.toLowerCase() + ' ' + usd(R.cost.implement[i])).join(', '), disruptPct: pct(R.disruptUnits / R.units, 0), slipAfter: R.slipAfter,
-    best8Score: usd(best8.score), best8Text: planText(b8.moves), best8Spent: usd(best8.spent), best8EndRate: pct(best8.endRate), best8Counted: usd(best8.counted),
-    logFirstCost: usd(R.cost.implement[2]), logFirstScore: usd(logFirst.score), noMeasureScore: usd(noMeasure.score), noMeasureGap: usd(best8.score - noMeasure.score),
+    best8Score: usd(best8.score), best8Text: planText(b8.moves), best8Spent: usd(best8.spent), best8EndRate: pct(best8.endRate, 2), best8Counted: usd(best8.counted),
+    logFirstCost: usd(R.cost.implement[2]), logFirstScore: usd(logFirst.score), noMeasureScore: usd(noMeasure.score), noMeasureGap: usd(best8.score - noMeasure.score), noMeasureCounted: usd(noMeasure.counted), countedPer: usd(R.price + R.handling),
     noPilot8Text: planText(b6.moves.slice(0, 5)), noPilot8Score: usd(noPilot8.score), piloted6Counted: usd(piloted6.counted), best6Counted: usd(best6.counted), noPilotGap: usd(best8.score - noPilot8.score), best6Text: planText(b6.moves), best6Score: usd(best6.score), piloted6Score: usd(piloted6.score), pilot6Gap: usd(best6.score - piloted6.score),
     noControlScore: usd(noControl.score), noControlGap: usd(best8.score - noControl.score) };
   const f = (t, w) => t.replace(/\{([A-Za-z0-9]+)\}/g, (m, k) => { if (!(k in V)) { errors.push('dmaic ' + w + ': unknown {' + k + '}'); return m; } return String(V[k]); });
