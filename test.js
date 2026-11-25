@@ -49,7 +49,7 @@ function ok(c, m) { if (c) pass++; else { fails.push(m); console.log('FAIL', m);
     await fit(page, tag + ' home');
     await page.goto(URL + '#lane-quality'); await page.waitForSelector('.secrow');
     await fit(page, tag + ' quality lane');
-    for (const h of ['#beer-game', '#mock', '#mock-cscp'].concat(BANK.decks.flatMap(d => ['#deck-' + d.id, '#cards-' + d.id].concat(d.lessons.map(l => '#lesson-' + l.id))))) {
+    for (const h of ['#beer-game', '#mock', '#mock-cscp', '#lane-coo', '#lane-supply-chain', '#packet-tp-1', '#packet-tp-2', '#packet-tp-3', '#stage-tp-3-2', '#rp-tpl-1', '#rp-tpl-2'].concat(BANK.decks.flatMap(d => ['#deck-' + d.id, '#cards-' + d.id].concat(d.lessons.map(l => '#lesson-' + l.id))))) {
       await page.goto(URL + h); await page.waitForTimeout(120); await fit(page, tag + ' ' + h);
     }
     // a lesson with every question answered (long why/whyNot text), practice, a flipped card
@@ -106,17 +106,12 @@ function ok(c, m) { if (c) pass++; else { fails.push(m); console.log('FAIL', m);
     ok(/Throughput/.test(await page.locator('.brand').textContent()), 'brand reads Throughput');
     const lanes = await page.locator('.lanebtn').evaluateAll(b => b.map(x => ({ id: x.dataset.id, off: x.disabled, t: x.textContent })));
     ok(lanes.map(l => l.id).join() === 'quality,supply-chain,coo', 'lane order ' + lanes.map(l => l.id).join());
-    ok(lanes.filter(l => !l.off).map(l => l.id).join() === 'quality,supply-chain', 'Quality and Supply chain are active');
-    ok(lanes.filter(l => l.off).every(l => /Later$/.test(l.t)), 'COO shows Later');
+    ok(lanes.every(l => !l.off), 'all three lanes are active (Phase 4)');
     ok(/Quality and process improvement/.test(lanes[0].t) && /Supply chain/.test(lanes[1].t) && /Chief Operating Officer \(COO\)/.test(lanes[2].t), 'lane names');
     ok(lanes.every(l => !/\b(CDO|CRO|CPO|CCO)\b/.test(l.t)), 'no colliding bare acronyms in lane names');
-    await page.locator('.lanebtn[data-id="coo"]').click({ force: true }); await page.waitForTimeout(100);
-    ok(await page.locator('.lanebtn').count() === 3, 'a disabled lane does not open');
-    await page.goto(URL + '#lane-coo'); await page.waitForSelector('.lanebtn');
-    ok(await page.locator('.secrow').count() === 0, 'route to a Later lane falls back to the lane picker');
     await page.goto(URL + '#lane-supply-chain'); await page.waitForSelector('.secrow');
     const scs = await page.locator('.secrow').evaluateAll(r => r.map(x => x.id));
-    ok(scs.join() === 'supply-chain-inventory,supply-chain-bottleneck,supply-chain-beer,supply-chain-sc1,supply-chain-sc2,supply-chain-sc3,supply-chain-sc4,supply-chain-sc5,supply-chain-sc6,supply-chain-sc7,supply-chain-sc8,supply-chain-mock', 'supply chain sections ' + scs.join());
+    ok(scs.join() === 'supply-chain-inventory,supply-chain-bottleneck,supply-chain-beer,supply-chain-sc1,supply-chain-sc2,supply-chain-sc3,supply-chain-sc4,supply-chain-sc5,supply-chain-sc6,supply-chain-sc7,supply-chain-sc8,supply-chain-mock,supply-chain-cpo1', 'supply chain sections ' + scs.join());
     const sct = await page.locator('.secrow').allTextContents();
     ok([10, 10, 17, 19, 9, 17, 10, 8].every((n, i) => sct[i + 3].indexOf(n + '% of the exam') !== -1), 'ASCM module weights shown');
     ok(/150 questions \(130 scored, 20 unscored pretest\), 3\.5 hours/.test(await page.locator('main').textContent()) && /pass at 300/.test(await page.locator('main').textContent()), 'CSCP exam facts shown');
@@ -135,7 +130,7 @@ function ok(c, m) { if (c) pass++; else { fails.push(m); console.log('FAIL', m);
     ok(/last visited/.test(await page.locator('.lanebtn[data-id="quality"]').textContent()), 'home marks the last lane');
     ok(/Saved on this device/.test(await page.locator('#prefs-saved').textContent()), 'save line without Claude');
     // Engines load with role-play rules on (no content yet).
-    ok(BANK.craft.length === 0 && BANK.runs.length === 0 && BANK.roleplays.length === 0, 'no Craft or Simulations content yet');
+    ok(BANK.craft.map(p => p.id).join() === 'TP-1,TP-2,TP-3' && BANK.runs.length === 0 && BANK.roleplays.map(r => r.id).join() === 'TPL-1,TPL-2', 'Phase 4: packets TP-1..3, role-plays TPL-1..2, no runs (TPN-1 deferred)');
     ok(/^v0\.2\.2$/.test(BANK.kitVersion), 'study-kit pinned to v0.2.2');
     await page.goto(URL + '#sims'); await page.waitForTimeout(150);
     ok(/Simulations/.test(await page.locator('.playtop .ttl').textContent()), '#sims opens the Simulations list');
@@ -152,9 +147,11 @@ function ok(c, m) { if (c) pass++; else { fails.push(m); console.log('FAIL', m);
     // Approved outlines: lessons / questions / cards per deck (Phase 1 and Phase 2 proposals)
     const OUT = { overview: [6, 16, 16], define: [9, 30, 20], measure: [9, 30, 24], analyze: [9, 27, 22], improve: [7, 24, 20], control: [7, 23, 22],
       // Phase 3: ASCM weights (lessons / questions / cards)
-      sc1: [5, 15, 11], sc2: [5, 15, 11], sc3: [8, 26, 19], sc4: [9, 29, 22], sc5: [4, 13, 10], sc6: [8, 25, 19], sc7: [5, 15, 11], sc8: [4, 12, 9] };
+      sc1: [5, 15, 11], sc2: [5, 15, 11], sc3: [8, 26, 19], sc4: [9, 29, 22], sc5: [4, 13, 10], sc6: [8, 25, 19], sc7: [5, 15, 11], sc8: [4, 12, 9],
+      // Phase 4: COO lane and the CPO deck
+      coo1: [5, 12, 10], coo2: [5, 12, 10], coo3: [5, 12, 10], coo4: [5, 12, 10], coo5: [5, 12, 10], coo6: [5, 12, 10], cpo1: [5, 12, 10] };
     ok(BANK.decks.filter(d => d.lane === 'quality').map(d => d.id).join() === 'overview,define,measure,analyze,improve,control', 'quality decks in BoK order');
-    ok(BANK.decks.filter(d => d.lane === 'supply-chain').every(d => /^sc[1-8]$/.test(d.id)), 'supply chain decks are sc1..sc8');
+    ok(BANK.decks.filter(d => d.lane === 'supply-chain').every(d => /^(sc[1-8]|cpo1)$/.test(d.id)), 'supply chain decks are sc1..sc8 and cpo1');
     for (const d of BANK.decks) {
       await page.goto(URL + '#deck-' + d.id); await page.waitForSelector('.itemrow');
       ok(await page.locator('main .itemrow').count() === OUT[d.id][0], d.id + ': ' + OUT[d.id][0] + ' lessons listed');
@@ -454,6 +451,51 @@ function ok(c, m) { if (c) pass++; else { fails.push(m); console.log('FAIL', m);
     await page.evaluate(() => { window.__tp.bn.put('best', { ts: Date.now(), profit: 1 }); window.__tp.bn.put('last', { ts: Date.now(), release: 'rope', buys: Array(12).fill(-1) }); });
     await page.goto(URL + '#lane-supply-chain'); await page.waitForSelector('#supply-chain-bottleneck');
     ok(!/\$1\b/.test(await page.locator('#supply-chain-bottleneck').textContent()), 'bottleneck: a run saved under the first rules is set aside');
+    await ctx.close();
+  }
+
+  // ---- 2g. COO lane, level filter, Craft packets and role-plays (Phase 4)
+  {
+    const { ctx, page } = await newPage();
+    await page.goto(URL + '#lane-coo'); await page.waitForSelector('.secrow');
+    const secs = await page.locator('.secrow').evaluateAll(r => r.map(x => x.id));
+    ok(secs.join() === 'coo-coo1,coo-coo2,coo-coo3,coo-coo4,coo-coo5,coo-coo6,coo-cases,coo-role-plays', 'COO sections ' + secs.join());
+    ok(await page.locator('.secrow .soon').count() === 0, 'COO: no section shows "Phase n"');
+    const tog = () => page.locator('[data-act="level"]').evaluateAll(b => b.map(x => x.dataset.id + ':' + x.getAttribute('aria-pressed')).join());
+    ok(await tog() === 'director:true,vp:true,c-level:true', 'level filter: three levels, all on by default');
+    const packets = () => page.locator('#coo-cases .itemrow').evaluateAll(a => a.map(x => x.getAttribute('href')).join());
+    const rps = () => page.locator('#coo-role-plays .itemrow').evaluateAll(a => a.map(x => x.getAttribute('href')).join());
+    ok(await packets() === '#packet-tp-1,#packet-tp-2,#packet-tp-3', 'COO lane lists TP-1..TP-3 ' + await packets());
+    ok(await rps() === '#rp-tpl-1,#rp-tpl-2', 'COO lane lists TPL-1 and TPL-2 ' + await rps());
+    ok(/Draft/.test(await page.locator('#coo-cases').textContent()) && /Director/.test(await page.locator('#coo-cases').textContent()), 'packet rows show Draft and level chips');
+    await act(page, 'level', 'director'); await page.waitForTimeout(150);
+    await act(page, 'level', 'vp'); await page.waitForTimeout(150);
+    ok(await tog() === 'director:false,vp:false,c-level:true', 'level filter: C-level only');
+    ok(await packets() === '#packet-tp-3' && /2 more hidden by the level filter/.test(await page.locator('#coo-cases').textContent()), 'C-level only: TP-3 shows, two packets hidden');
+    ok(await rps() === '#rp-tpl-2', 'C-level only: TPL-2 shows');
+    ok(/3 lessons at your levels/.test(await page.locator('#coo-coo1').textContent()), 'deck row counts lessons at the chosen levels: ' + await page.locator('#coo-coo1 .itemrow').textContent());
+    await act(page, 'level', 'c-level'); await page.waitForTimeout(150);
+    ok(await tog() === 'director:false,vp:false,c-level:true', 'the last level cannot be turned off');
+    await page.reload(); await page.waitForSelector('.secrow'); await page.waitForTimeout(300);
+    ok(await tog() === 'director:false,vp:false,c-level:true', 'level filter survives a reload');
+    await page.goto(URL + '#deck-coo1'); await page.waitForSelector('.itemrow');
+    ok(await page.locator('main a.itemrow[href^="#lesson-"]').count() === 3 && /2 more hidden/.test(await page.locator('main').textContent()), 'deck screen filters lessons');
+    await page.goto(URL + '#lesson-coo1-5'); await page.waitForSelector('.stem');
+    const shown = await page.locator('.stem').count(), all = BANK.decks.find(d => d.id === 'coo1').questions.filter(q => q.lesson === 'coo1-5');
+    ok(shown === all.filter(q => q.levels.indexOf('c-level') !== -1).length, 'lesson questions follow the filter (' + shown + ')');
+    await page.goto(URL + '#lane-supply-chain'); await page.waitForSelector('#supply-chain-cpo1');
+    ok(await page.locator('#lv-h').count() === 0, 'supply chain lane has no level filter');
+    ok(await page.locator('#supply-chain-cpo1 a[href="#deck-cpo1"]').count() === 1, 'supply chain lane links the CPO deck');
+    await page.goto(URL + '#deck-cpo1'); await page.waitForSelector('.itemrow');
+    ok(await page.locator('#lv-h').count() === 1, 'CPO deck shows the level filter');
+    await page.goto(URL + '#deck-measure'); await page.waitForSelector('.itemrow');
+    ok(await page.locator('#lv-h').count() === 0 && await page.locator('main a.itemrow[href^="#lesson-"]').count() === BANK.decks.find(d => d.id === 'measure').lessons.length, 'untagged decks ignore the filter');
+    await page.goto(URL + '#packet-tp-3'); await page.waitForTimeout(300);
+    ok(/The executive S&OP meeting/.test(await page.locator('main').textContent()), 'packet route opens TP-3');
+    await page.goto(URL + '#rp-tpl-2'); await page.waitForTimeout(300);
+    ok(/gross margin/.test(await page.locator('main').textContent()), 'role-play route opens TPL-2');
+    for (const d of BANK.decks.filter(x => x.leveled)) ok([].concat(d.lessons, d.questions, d.cards).every(x => Array.isArray(x.levels) && x.levels.length), 'every item in ' + d.id + ' has levels');
+    ok(BANK.decks.filter(x => x.leveled).map(x => x.id).join() === 'coo1,coo2,coo3,coo4,coo5,coo6,cpo1', 'leveled decks');
     await ctx.close();
   }
 

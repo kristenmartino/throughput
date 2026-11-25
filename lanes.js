@@ -2,6 +2,13 @@
 // Lane names use full titles (naming rule, claude/c-suite-series-plan.md); acronyms appear only in brackets.
 'use strict';
 module.exports = {
+  // Level tags (Phase 4 decision 2B, Nov 24): every COO lane item and the Chief Procurement Officer deck carry one or more.
+  // Same three levels as Blast Radius.
+  levels: [
+    { id: 'director', name: 'Director', scope: 'Runs the operation or program' },
+    { id: 'vp', name: 'VP', scope: 'Owns the budget and the org' },
+    { id: 'c-level', name: 'C-level', scope: 'Owns the strategy and the board update' }
+  ],
   lanes: [
     { id: 'quality', name: 'Quality and process improvement', short: 'Quality', active: true, color: '--s-mint',
       blurb: 'Six Sigma Green Belt (ASQ CSSGB, 2022 Body of Knowledge): DMAIC, lean, statistics and process capability.',
@@ -9,7 +16,7 @@ module.exports = {
     { id: 'supply-chain', name: 'Supply chain (including Chief Procurement Officer)', short: 'Supply chain', active: true, color: '--s-sky',
       blurb: 'End-to-end supply chain on the ASCM CSCP modules: demand, sourcing, inventory, logistics, risk. Procurement leadership.',
       cert: 'ASCM Certified Supply Chain Professional (CSCP)' },
-    { id: 'coo', name: 'Chief Operating Officer (COO)', short: 'COO', active: false, color: '--s-orange',
+    { id: 'coo', name: 'Chief Operating Officer (COO)', short: 'COO', active: true, color: '--s-orange', leveled: true,
       blurb: 'Operating cadence, operations finance, executive S&OP, make-versus-buy, operations strategy and org design.' }
   ],
   // Sections for each active lane. Section ids are link ids (lane-section) and never change once published.
@@ -40,7 +47,20 @@ module.exports = {
       { id: 'sc6', title: '6. Supply chain relationships', kind: 'Deck', weight: 17, phase: 3 },
       { id: 'sc7', title: '7. Supply chain risk', kind: 'Deck', weight: 10, phase: 3 },
       { id: 'sc8', title: '8. Optimization, sustainability and technology', kind: 'Deck', weight: 8, phase: 3 },
-      { id: 'mock', title: 'Timed mock (150 questions, 3 h 30 min)', kind: 'Mock exam', mock: 'cscp', phase: 3 }
+      { id: 'mock', title: 'Timed mock (150 questions, 3 h 30 min)', kind: 'Mock exam', mock: 'cscp', phase: 3 },
+      // Phase 4 (decision 5A): the Chief Procurement Officer's job. No exam weight; level-tagged.
+      { id: 'cpo1', title: 'Chief Procurement Officer: leading procurement', kind: 'Deck', phase: 4 }
+    ],
+    // COO lane (Phase 4, approved Nov 24, 18:31 ET). No exam, so no weights and no mock; every item carries level tags.
+    coo: [
+      { id: 'coo1', title: '1. Operating cadence', kind: 'Deck', phase: 4 },
+      { id: 'coo2', title: '2. Operations finance', kind: 'Deck', phase: 4 },
+      { id: 'coo3', title: '3. Executive S&OP', kind: 'Deck', phase: 4 },
+      { id: 'coo4', title: '4. Make vs. buy and outsourcing', kind: 'Deck', phase: 4 },
+      { id: 'coo5', title: '5. Operations strategy', kind: 'Deck', phase: 4 },
+      { id: 'coo6', title: '6. Organizing operations', kind: 'Deck', phase: 4 },
+      { id: 'cases', title: 'Craft packets', kind: 'Craft packets', phase: 4 },
+      { id: 'role-plays', title: 'Role-plays', kind: 'Role-plays', phase: 4 }
     ]
   },
   // Exam facts shown on the lane screen (Read, asq.org/cert/six-sigma-green-belt, opened Nov 24).
