@@ -80,6 +80,7 @@ figure.lfig { margin: 0; display: grid; gap: 6px; }
 <script>__BEER_ENGINE__</script>
 <script>__INV_ENGINE__</script>
 <script>__BN_ENGINE__</script>
+<script>__DM_ENGINE__</script>
 <script>
 (function () {
   'use strict';
@@ -87,7 +88,7 @@ figure.lfig { margin: 0; display: grid; gap: 6px; }
   const APP = 'throughput';
   const esc = s => String(s == null ? '' : s).replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', '\'': '&#39;' }[c]));
   const X = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" aria-hidden="true"><path d="M6 6l12 12M18 6L6 18"/></svg>';
-  const LANES = BANK.lanes, SECTIONS = BANK.sections, DECKS = BANK.decks, BEER = BANK.beer, INV = BANK.inventory, BNK = BANK.bottleneck;
+  const LANES = BANK.lanes, SECTIONS = BANK.sections, DECKS = BANK.decks, BEER = BANK.beer, INV = BANK.inventory, BNK = BANK.bottleneck, DMK = BANK.dmaic, DM = window.DmaicEngine;
   const laneById = id => LANES.find(l => l.id === id);
   const deckById = id => DECKS.find(d => d.id === id);
   const QS = {}, LESSONS = {}, CARDS = {};
@@ -96,7 +97,7 @@ figure.lfig { margin: 0; display: grid; gap: 6px; }
   const money2 = h => '$' + (h / 2).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 });   // half-dollars to dollars
 
   // ---- stores (study-kit's save helper): prefs, deck progress, Beer Game
-  const status = () => { for (const [id, s] of [['prefs-saved', prefs], ['deck-saved', decks], ['beer-saved', beer], ['mock-saved', mock], ['inv-saved', inv], ['bn-saved', bn]]) { const el = document.getElementById(id); if (el && s) el.textContent = s.statusText(); } };
+  const status = () => { for (const [id, s] of [['prefs-saved', prefs], ['deck-saved', decks], ['beer-saved', beer], ['mock-saved', mock], ['inv-saved', inv], ['bn-saved', bn], ['dm-saved', dm]]) { const el = document.getElementById(id); if (el && s) el.textContent = s.statusText(); } };
   const keep = ok => x => { const o = {}; if (!x || typeof x !== 'object') return o; for (const k in x) if (ok(k) && x[k] && typeof x[k] === 'object' && typeof x[k].ts === 'number') o[k] = JSON.parse(JSON.stringify(x[k])); return o; };
   const prefs = K.save.createStore({ localKey: APP + ':prefs:v1', doc: 'prefs', field: 'prefs', normalize: keep(k => k === 'lane' || k === 'levels'), onRemote() { if (SCREEN === 'home') host.keepScroll(); }, onStatus: () => status() });
   const decks = K.save.createStore({ localKey: APP + ':decks:v1', doc: 'decks', field: 'decks', normalize: keep(k => !!(QS[k] || CARDS[k])),
@@ -116,9 +117,11 @@ figure.lfig { margin: 0; display: grid; gap: 6px; }
   const inv = K.save.createStore({ localKey: APP + ':inv:v1', doc: 'inv', field: 'inv', normalize: keep(k => /^(game|last|best)$/.test(k)),
     onRemote() { if (SCREEN === 'inv' || SCREEN === 'lane' || SCREEN === 'home') host.keepScroll(); }, onStatus: () => status() });
   // Bottleneck line: the run in progress ('game': release rule and buys so far), the last finished run and the best profit.
+  const dm = K.save.createStore({ localKey: APP + ':dm:v1', doc: 'dm', field: 'dm', normalize: keep(k => /^(game|last|best)$/.test(k)),
+    onRemote() { if (SCREEN === 'dm' || SCREEN === 'lane') host.keepScroll(); }, onStatus: () => status() });
   const bn = K.save.createStore({ localKey: APP + ':bn:v1', doc: 'bn', field: 'bn', normalize: keep(k => /^(game|last|best)$/.test(k)),
     onRemote() { if (SCREEN === 'bn' || SCREEN === 'lane') host.keepScroll(); }, onStatus: () => status() });
-  prefs.loadLocal(); decks.loadLocal(); beer.loadLocal(); mock.loadLocal(); inv.loadLocal(); bn.loadLocal();
+  prefs.loadLocal(); decks.loadLocal(); beer.loadLocal(); mock.loadLocal(); inv.loadLocal(); bn.loadLocal(); dm.loadLocal();
   // A finished or abandoned game is stored as { done: true }, so other devices drop it too.
   const game = () => { const v = beer.get('game'); return v && !v.done ? v : undefined; };
 
@@ -212,7 +215,7 @@ figure.lfig { margin: 0; display: grid; gap: 6px; }
     const l = laneById(VIEW.id);
     if (!l || !l.active) return host.go('home', {});
     const secs = SECTIONS[l.id] || [];
-    const g = game(), SIM = { '#beer-game': [BEER, () => g ? 'In progress · ' + BG.SEATS[g.seat] : 'Bullwhip · 32 weekly orders'], '#inventory-sim': [INV, invMeta], '#bottleneck-sim': [BNK, bnMeta] };
+    const g = game(), SIM = { '#beer-game': [BEER, () => g ? 'In progress · ' + BG.SEATS[g.seat] : 'Bullwhip · 32 weekly orders'], '#inventory-sim': [INV, invMeta], '#bottleneck-sim': [BNK, bnMeta], '#run-tpn-1': [DMK, dmMeta] };
     app.innerHTML = host.header(l.short + ' lane', 'home', '', 'Back to lanes', l.id === 'quality' ? 'Green Belt' : l.id === 'supply-chain' ? 'CSCP' : '') +
       '<main class="wrap"><section class="card" style="display:grid;gap:10px"><h2 class="ttl" style="font-size:19px">' + esc(l.name) + '</h2><p class="note">' + esc(l.blurb) + '</p>' +
       (BANK.exam[l.id] ? '<p class="note"><b>The exam:</b> ' + esc(BANK.exam[l.id]) + '</p>' : '') + '</section>' + (l.leveled ? levelFilter() : '') +
@@ -640,13 +643,90 @@ figure.lfig { margin: 0; display: grid; gap: 6px; }
       '<div class="row"><button class="btn btn-primary" data-act="bn-again">Play again</button><a class="btn" href="#lane-supply-chain">Back to the lane</a></div>' + foot() + '</main>';
   }
 
+  // ---- DMAIC on a P&L (TPN-1, app-side engine math/dmaic.js; Phase 4b)
+  const DM_RV = 1, dmCur = v => v && v.rv === DM_RV ? v : undefined;
+  const dmGame = () => { const v = dmCur(dm.get('game')); return v && !v.done && Array.isArray(v.moves) ? JSON.parse(JSON.stringify(v)) : undefined; };
+  const dmMeta = () => { const g = dmGame(), b = dmCur(dm.get('best')); return g ? 'In progress · month ' + (g.moves.length + 1) + ' of ' + DM.RULES.months : DM.RULES.months + ' months · ' + usd(DM.RULES.budget) + ' to spend' + (b ? ' · best ' + usd(b.score) : ''); };
+  // A month's selection is valid if it plays legally after the moves already made (codes ascending, within budget).
+  function dmValid(g, sel) { if (sel.length > DM.RULES.perMonth) return false; const r = DM.play({ moves: g.moves.concat([sel.slice().sort((a, b) => a - b)]) }); return !r.error && r.h.contrib.length === g.moves.length + 1; }
+  const dmCanAdd = (g, sel, m) => sel.length < DM.RULES.perMonth && sel.indexOf(m) === -1 && dmValid(g, sel.concat([m]));
+  function dmValidPrefix(g, sel) { const out = []; for (const m of sel.slice().sort((a, b) => a - b)) if (dmValid(g, out.concat([m]))) out.push(m); return out; }
+  function renderDm() {
+    const g = dmGame();
+    if (g) {
+      if (g.moves.length >= DM.RULES.months) { dmFinish(g); return renderDm(); }
+      return renderDmMonth(g);
+    }
+    if (VIEW.debrief && dmCur(dm.get('last'))) return renderDmDebrief(dmCur(dm.get('last')));
+    const last = dmCur(dm.get('last'));
+    app.innerHTML = host.header(DMK.title, 'lane', 'coo', 'Back to the COO lane', 'Draft') + '<main class="wrap" style="display:grid;gap:12px"><section class="card prose" style="display:grid;gap:10px"><div class="row">' + draftChip(DMK) + '<span class="lvchip">Green Belt project · finance</span>' + lvChips(DMK.levels) + '</div>' +
+      DMK.briefing.map(p => '<p>' + esc(p) + '</p>').join('') + '</section>' +
+      '<section class="card" style="display:grid;gap:10px"><div class="row"><button class="btn btn-primary" data-act="dm-start">Start month 1</button>' + (last ? '<button class="btn" data-act="dm-debrief">Last run\'s debrief</button>' : '') + '</div>' +
+      '<p class="note" id="dm-saved">' + esc(dm.statusText()) + '</p></section>' + foot() + '</main>';
+  }
+  // What the player knows about each cause: the plant log until Measure; the true ranking after it; the true share once
+  // analyzed; the fix's effect once piloted.
+  function dmCauses(done) {
+    const R = DM.RULES, total = R.defects.reduce((a, b) => a + b, 0), measured = done[0] !== undefined;
+    const rank = R.defects.map((d, i) => [d, i]).sort((a, b) => b[0] - a[0]).map(x => x[1]), logRank = R.logShares.map((d, i) => [d, i]).sort((a, b) => b[0] - a[0]).map(x => x[1]);
+    return '<table class="t" id="dm-causes"><thead><tr><th>Cause</th><th>' + (measured ? 'True rank' : 'Plant log') + '</th><th>Share</th><th>Fix</th></tr></thead><tbody>' +
+      R.causes.map((c, i) => {
+        const an = i < 3 && done[1 + i] !== undefined, pi = i < 3 && done[4 + i] !== undefined, im = i < 3 && done[7 + i] !== undefined;
+        return '<tr><td>' + esc(c) + '</td><td>' + (measured ? (rank.indexOf(i) + 1) : (logRank.indexOf(i) + 1) + ' (' + Math.round(100 * R.logShares[i]) + '%)') + '</td><td>' + (an ? Math.round(100 * R.defects[i] / total) + '%' : '—') + '</td><td>' +
+          (i === 3 ? 'none' : (pi ? 'removes ' + Math.round(100 * R.removes[i] / R.defects[i]) + '%' : '') + (im ? (pi ? '; ' : '') + 'in from month ' + (done[7 + i] + 2) : '') || '—') + '</td></tr>';
+      }).join('') + '</tbody></table>';
+  }
+  function renderDmMonth(g) {
+    const R = DM.RULES, t = g.moves.length, r = DM.play({ moves: g.moves }), st = DM.stats(r), sel = VIEW.sel || [], left = R.budget - r.spent;
+    const selCost = sel.reduce((a, m) => a + DM.moveCost(m), 0), names = DMK.names;
+    const btn = m => { const on = sel.indexOf(m) !== -1, can = on || dmCanAdd(g, sel, m), done = r.done[m] !== undefined;
+      return done ? '' : '<button class="tog" data-act="dm-pick" data-id="' + m + '" aria-pressed="' + on + '"' + (can ? '' : ' disabled') + '>' + esc(names[m]) + ' · ' + usd(DM.moveCost(m)) + '</button>'; };
+    const group = (title, codes) => { const b = codes.map(btn).join(''); return b ? '<div style="display:grid;gap:6px"><h3 class="k">' + esc(title) + '</h3><div class="seats" role="group" aria-label="' + esc(title) + '">' + b + '</div></div>' : ''; };
+    const n = r.h.contrib.length;
+    app.innerHTML = host.header(DMK.title, 'lane', 'coo', 'Back to the COO lane', 'Month ' + (t + 1) + ' of ' + R.months) + '<main class="wrap" style="display:grid;gap:12px">' +
+      '<section class="card" style="display:grid;gap:10px" aria-live="polite"><div class="stat" id="dm-status">' +
+      [['Contribution so far', usd(st.contrib)], ['Do nothing so far', usd(st.baseMonth * n)], ['Left to spend', usd(left)], ['Scrap last month', n ? r.h.defects[n - 1].toLocaleString('en-US') : R.defects.reduce((a, b) => a + b, 0).toLocaleString('en-US')]]
+        .map(x => '<div><span class="v">' + esc(x[1]) + '</span><span class="l">' + esc(x[0]) + '</span></div>').join('') + '</div></section>' +
+      '<section class="card scroll" style="padding:4px 8px">' + dmCauses(r.done) + '</section>' +
+      '<section class="card" style="display:grid;gap:12px"><h2 class="ttl" style="font-size:18px">Month ' + (t + 1) + ': up to ' + R.perMonth + ' moves</h2>' +
+      group('Measure', [0]) + group('Analyze', [1, 2, 3]) + group('Pilot', [4, 5, 6]) + group('Implement', [7, 8, 9]) + group('Control', [10]) +
+      '<p class="note" id="dm-sel">' + (sel.length ? 'Chosen: ' + esc(sel.map(m => names[m]).join(', ')) + ' (' + usd(selCost) + ').' : 'No moves chosen.') + '</p>' +
+      '<div class="row"><button class="btn btn-primary" data-act="dm-run">Run month ' + (t + 1) + '</button></div></section>' +
+      (n ? '<section aria-labelledby="dmh-h"><div class="section-h"><h2 id="dmh-h">P&amp;L by month</h2><span class="hint">Do nothing: ' + usd(st.baseMonth) + ' a month</span></div><div class="card scroll" style="padding:4px 8px"><table class="t" id="dm-hist"><thead><tr><th>Month</th><th>Moves</th><th>Scrap</th><th>Revenue</th><th>Spend</th><th>Contribution</th></tr></thead><tbody>' +
+        r.h.contrib.map((c, k) => '<tr><td>' + (k + 1) + (r.h.disrupted[k] ? ' <span class="k">disrupted</span>' : '') + '</td><td>' + esc(g.moves[k].map(m => names[m]).join(', ') || '—') + '</td><td>' + r.h.defects[k].toLocaleString('en-US') + '</td><td>' + usd(r.h.revenue[k]) + '</td><td>' + usd(r.h.spend[k]) + '</td><td>' + usd(c) + '</td></tr>').reverse().join('') + '</tbody></table></div></section>' : '') +
+      '<div class="row"><button class="btn btn-quiet" data-act="dm-quit">Abandon this run</button></div><p class="note" id="dm-saved">' + esc(dm.statusText()) + '</p>' + foot() + '</main>';
+  }
+  function dmFinish(g) {
+    const st = DM.stats(DM.play({ moves: g.moves })), b = dmCur(dm.get('best'));
+    dm.put('last', { ts: Date.now(), rv: DM_RV, moves: g.moves });
+    if (!b || st.score > b.score) dm.put('best', { ts: Date.now(), rv: DM_RV, score: st.score });
+    dm.put('game', { ts: Date.now(), rv: DM_RV, done: true });
+    VIEW = { debrief: true };
+  }
+  function renderDmDebrief(last) {
+    const R = DM.RULES, r = DM.play({ moves: last.moves }), st = DM.stats(r), ref = DMK.ref, best = dmCur(dm.get('best'));
+    const row = (name, s) => '<tr><td>' + name + '</td><td>' + usd(s.score) + '</td><td>' + usd(s.contrib) + '</td><td>' + usd(s.counted) + '</td><td>' + usd(s.spent) + '</td></tr>';
+    const L = id => { const x = LESSONS[id]; return x ? '<a href="#lesson-' + esc(id) + '">' + esc(DMK.links.find(l => l[0] === id)[1]) + '</a>' : ''; };
+    app.innerHTML = host.header('Debrief · DMAIC on a P&L', 'lane', 'coo', 'Back to the COO lane', R.months + ' months') + '<main class="wrap" style="display:grid;gap:12px">' +
+      '<section class="card" style="display:grid;gap:10px"><div class="row">' + draftChip(DMK) + '<span class="k">' + R.months + ' months played</span></div><div class="stat" id="dm-score">' +
+      [['Your score', usd(st.score)], ['Contribution after spend', usd(st.contrib)], ['Saving finance counts', usd(st.counted) + ' a year'], ['Scrap at the end', pct1(st.endRate)], ['Your best so far', best ? usd(best.score) : '—']]
+        .map(x => '<div><span class="v">' + esc(x[1]) + '</span><span class="l">' + esc(x[0]) + '</span></div>').join('') + '</div>' +
+      (st.disrupted ? '<p class="note">' + st.disrupted + ' month' + (st.disrupted === 1 ? '' : 's') + ' lost output to an unpiloted fix.</p>' : '') + '</section>' +
+      '<section class="card scroll" style="padding:4px 8px"><table class="t" id="dm-compare"><thead><tr><th>Plan</th><th>Score</th><th>Contribution</th><th>Counted a year</th><th>Spent</th></tr></thead><tbody>' +
+      row('You', st) + row('Best plan', ref.best8) + row('Best plan without pilots', ref.noPilot8) + row('Best plan without a control plan', ref.noControl) + row('Fix the causes without Measure or Analyze', ref.noMeasure) + row('Trust the log: fix bar stock first', ref.logFirst) + row('Do nothing', ref.nothing) + '</tbody></table></section>' +
+      '<article class="card prose" style="display:grid;gap:10px"><h2 class="ttl" style="font-size:18px">What the numbers say</h2>' + DMK.lesson.map(p => '<p>' + esc(p) + '</p>').join('') +
+      '<h3 class="k">Read next</h3><ul>' + DMK.links.map(l => L(l[0])).filter(Boolean).map(a => '<li>' + a + '</li>').join('') + '<li><a href="#packet-' + esc(DMK.packet.toLowerCase()) + '">' + esc(DMK.packet) + ': the same project as a Craft packet</a></li></ul>' +
+      '<h3 class="k">Sources</h3><ul class="src">' + DMK.sources.map(x => '<li><a href="' + esc(x[1]) + '" target="_blank" rel="noopener">' + esc(x[0]) + '</a> <span class="lvchip">' + esc(x[2]) + '</span></li>').join('') + '</ul></article>' +
+      '<div class="row"><button class="btn btn-primary" data-act="dm-again">Play again</button><a class="btn" href="#lane-coo">Back to the lane</a></div>' + foot() + '</main>';
+  }
+
   function foot() {
     const t = theme();
     return '<footer class="foot"><div class="row"><span>Theme:</span>' + ['system', 'light', 'dark'].map(x => '<button class="tog" data-act="theme" data-id="' + x + '" aria-pressed="' + (t === x) + '">' + x[0].toUpperCase() + x.slice(1) + '</button>').join('') + '</div>' +
       '<p>Engines: study-kit ' + esc(BANK.kitVersion) + '. Draft content has not been reviewed yet. Claude grading and role-plays work when this page is open in Claude; everything else works without it.</p></footer>';
   }
 
-  const SCREENS = Object.assign({ home: renderHome, lane: renderLane, deck: renderDeck, lesson: renderLesson, practice: renderPractice, cards: renderCards, beer: renderBeer, inv: renderInv, bn: renderBn, mock: renderMock }, craft.screens, sims.screens);
+  const SCREENS = Object.assign({ home: renderHome, lane: renderLane, deck: renderDeck, lesson: renderLesson, practice: renderPractice, cards: renderCards, beer: renderBeer, inv: renderInv, bn: renderBn, dm: renderDm, mock: renderMock }, craft.screens, sims.screens);
   const ACT = Object.assign({
     home() { history.replaceState(null, '', location.pathname + location.search); host.go('home', {}); },
     lane(t) { const l = laneById(t.dataset.id); if (!l || !l.active) return; prefs.put('lane', { ts: Date.now(), v: l.id }); history.replaceState(null, '', '#lane-' + l.id); host.go('lane', { id: l.id }); },
@@ -699,6 +779,15 @@ figure.lfig { margin: 0; display: grid; gap: 6px; }
     'bn-debrief'() { host.go('bn', { debrief: true }); },
     'bn-again'() { host.go('bn', {}); },
     'bn-quit'() { host.confirm('Abandon this run?', 'Your choices so far are discarded.', 'Abandon', () => { bn.put('game', { ts: Date.now(), rv: BN_RV, done: true }); host.go('bn', {}); }); },
+    'dm-start'() { dm.put('game', { ts: Date.now(), rv: DM_RV, moves: [] }); VIEW = { sel: [] }; host.go('dm', { sel: [] }); },
+    'dm-pick'(t) { const g = dmGame(); if (!g) return; const m = +t.dataset.id, sel = (VIEW.sel || []).slice(), i = sel.indexOf(m);
+      if (i !== -1) { sel.splice(i, 1); VIEW.sel = dmValidPrefix(g, sel); } else if (dmCanAdd(g, sel, m)) { sel.push(m); VIEW.sel = sel.sort((a, b) => a - b); } else return host.toast('That move is not available now.');
+      host.keepScroll(); },
+    'dm-run'() { const g = dmGame(); if (!g) return; const sel = (VIEW.sel || []).slice().sort((a, b) => a - b); if (!dmValid(g, sel)) return host.toast('Those moves are not allowed together.');
+      g.moves.push(sel); g.ts = Date.now(); dm.put('game', g); VIEW.sel = []; host.keepScroll(); },
+    'dm-debrief'() { host.go('dm', { debrief: true }); },
+    'dm-again'() { host.go('dm', {}); },
+    'dm-quit'() { host.confirm('Abandon this run?', 'Your moves so far are discarded.', 'Abandon', () => { dm.put('game', { ts: Date.now(), rv: DM_RV, done: true }); host.go('dm', {}); }); },
     'beer-quit'() { host.confirm('Abandon this game?', 'Your orders so far are discarded.', 'Abandon', () => { beer.put('game', { ts: Date.now(), done: true }); host.go('beer', {}); }); }
   }, craft.actions, sims.actions);
   function render() { (SCREENS[SCREEN] || renderHome)(); }
@@ -714,6 +803,7 @@ figure.lfig { margin: 0; display: grid; gap: 6px; }
     if (h === '#beer-game') { host.go('beer', {}); return true; }
     if (h === '#inventory-sim') { host.go('inv', {}); return true; }
     if (h === '#bottleneck-sim') { host.go('bn', {}); return true; }
+    if (h === '#run-tpn-1') { host.go('dm', {}); return true; }
     for (const m of Object.values(MOCKS)) if (h === m.route) { MOCK = m; host.go('mock', {}); return true; }
     return craft.route(h) || sims.route(h);
   }
@@ -734,10 +824,10 @@ figure.lfig { margin: 0; display: grid; gap: 6px; }
     try { const fn = await C.use('sample'); if (typeof fn === 'function') { SAMPLE = fn; if (['craft', 'packet', 'stage', 'sims', 'run', 'rp'].indexOf(SCREEN) !== -1) host.keepScroll(); } } catch (e) { /* not granted */ }
     try {
       const db = await C.use('db'), user = await C.use('user'), uid = user && await user.id();
-      if (db && uid) { prefs.attach(db, uid); decks.attach(db, uid); beer.attach(db, uid); mock.attach(db, uid); inv.attach(db, uid); bn.attach(db, uid); craft.attach(db, uid); sims.attach(db, uid); if (SCREEN === 'home') host.keepScroll(); }
+      if (db && uid) { prefs.attach(db, uid); decks.attach(db, uid); beer.attach(db, uid); mock.attach(db, uid); inv.attach(db, uid); bn.attach(db, uid); dm.attach(db, uid); craft.attach(db, uid); sims.attach(db, uid); if (SCREEN === 'home') host.keepScroll(); }
     } catch (e) { /* saved on this device only */ }
   })();
-  window.__tp = { craft, sims, prefs, decks, beer, mock, inv, bn, host, drawMock };
+  window.__tp = { craft, sims, prefs, decks, beer, mock, inv, bn, dm, host, drawMock };
 })();
 </script>
 </body>

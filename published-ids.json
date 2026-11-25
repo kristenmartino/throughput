@@ -33,7 +33,9 @@
   "coo-coo5",
   "coo-coo6",
   "coo-cases",
-  "coo-role-plays"
+  "coo-role-plays",
+  "quality-dmaic",
+  "coo-dmaic"
  ],
  "craft": [
   "TP-1",
@@ -908,7 +910,8 @@
  "games": [
   "beer-game",
   "inventory-sim",
-  "bottleneck-sim"
+  "bottleneck-sim",
+  "TPN-1"
  ],
  "mocks": [
   "mock",
