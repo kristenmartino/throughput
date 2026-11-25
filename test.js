@@ -74,6 +74,10 @@ function ok(c, m) { if (c) pass++; else { fails.push(m); console.log('FAIL', m);
     await act(page, 'bn-start'); await page.waitForSelector('#bn-line'); await page.locator('[data-act="bn-buy"][data-id="3"]').click(); await page.waitForSelector('#bn-hist'); await fit(page, tag + ' bottleneck round');
     for (let k = 0; k < 11; k++) await page.locator('[data-act="bn-buy"][data-id="-1"]').click();
     await page.waitForSelector('#bn-compare'); await fit(page, tag + ' bottleneck debrief');
+    await page.goto(URL + '#run-tpn-1'); await page.waitForSelector('[data-act="dm-start"]'); await fit(page, tag + ' dmaic intro');
+    await act(page, 'dm-start'); await page.waitForSelector('#dm-causes'); await act(page, 'dm-pick', '0'); await act(page, 'dm-pick', '1'); await act(page, 'dm-run'); await page.waitForSelector('#dm-hist'); await fit(page, tag + ' dmaic month');
+    for (let k = 1; k < 8; k++) { await act(page, 'dm-run'); await page.waitForTimeout(30); }
+    await page.waitForSelector('#dm-compare'); await fit(page, tag + ' dmaic debrief');
     // a Phase 2 lesson with every question answered, and the mock: question, review and result screens
     await page.goto(URL + '#lesson-an-6'); await page.waitForSelector('[data-act="pick"]');
     for (let i = 0; i < 4; i++) { const b = page.locator('[data-act="pick"]:not([disabled])').nth(0); if (await b.count()) await b.click(); }
@@ -120,17 +124,17 @@ function ok(c, m) { if (c) pass++; else { fails.push(m); console.log('FAIL', m);
     await act(page, 'lane', 'quality'); await page.waitForSelector('.secrow');
     ok(/#lane-quality$/.test(page.url()), 'opening Quality sets #lane-quality');
     const secs = await page.locator('.secrow').evaluateAll(r => r.map(x => x.id));
-    ok(secs.join() === 'quality-overview,quality-define,quality-measure,quality-analyze,quality-improve,quality-control,quality-mock', 'quality sections ' + secs.join());
+    ok(secs.join() === 'quality-overview,quality-define,quality-measure,quality-analyze,quality-improve,quality-control,quality-mock,quality-dmaic', 'quality sections ' + secs.join());
     const qs = await page.locator('.secrow').allTextContents();
     ok([11, 20, 20, 18, 16, 15].every((n, i) => qs[i].indexOf(n + ' of 100 scored questions') !== -1), 'section weights shown');
     ok(/110 questions \(100 scored\), 4 h 18 min/.test(await page.locator('main').textContent()), 'exam facts shown');
     await page.reload(); await page.waitForSelector('.secrow');
-    ok(await page.locator('.secrow').count() === 7, 'lane route survives a reload');
+    ok(await page.locator('.secrow').count() === 8, 'lane route survives a reload');
     await act(page, 'home'); await page.waitForSelector('.lanebtn');
     ok(/last visited/.test(await page.locator('.lanebtn[data-id="quality"]').textContent()), 'home marks the last lane');
     ok(/Saved on this device/.test(await page.locator('#prefs-saved').textContent()), 'save line without Claude');
     // Engines load with role-play rules on (no content yet).
-    ok(BANK.craft.map(p => p.id).join() === 'TP-1,TP-2,TP-3' && BANK.runs.length === 0 && BANK.roleplays.map(r => r.id).join() === 'TPL-1,TPL-2', 'Phase 4: packets TP-1..3, role-plays TPL-1..2, no runs (TPN-1 deferred)');
+    ok(BANK.craft.map(p => p.id).join() === 'TP-1,TP-2,TP-3' && BANK.runs.length === 0 && BANK.roleplays.map(r => r.id).join() === 'TPL-1,TPL-2', 'Phase 4: packets TP-1..3, role-plays TPL-1..2, no kit runs (TPN-1 is app-side)');
     ok(/^v0\.2\.2$/.test(BANK.kitVersion), 'study-kit pinned to v0.2.2');
     await page.goto(URL + '#sims'); await page.waitForTimeout(150);
     ok(/Simulations/.test(await page.locator('.playtop .ttl').textContent()), '#sims opens the Simulations list');
@@ -459,7 +463,7 @@ function ok(c, m) { if (c) pass++; else { fails.push(m); console.log('FAIL', m);
     const { ctx, page } = await newPage();
     await page.goto(URL + '#lane-coo'); await page.waitForSelector('.secrow');
     const secs = await page.locator('.secrow').evaluateAll(r => r.map(x => x.id));
-    ok(secs.join() === 'coo-coo1,coo-coo2,coo-coo3,coo-coo4,coo-coo5,coo-coo6,coo-cases,coo-role-plays', 'COO sections ' + secs.join());
+    ok(secs.join() === 'coo-coo1,coo-coo2,coo-coo3,coo-coo4,coo-coo5,coo-coo6,coo-cases,coo-role-plays,coo-dmaic', 'COO sections ' + secs.join());
     ok(await page.locator('.secrow .soon').count() === 0, 'COO: no section shows "Phase n"');
     const tog = () => page.locator('[data-act="level"]').evaluateAll(b => b.map(x => x.dataset.id + ':' + x.getAttribute('aria-pressed')).join());
     ok(await tog() === 'director:true,vp:true,c-level:true', 'level filter: three levels, all on by default');
@@ -499,6 +503,49 @@ function ok(c, m) { if (c) pass++; else { fails.push(m); console.log('FAIL', m);
     await ctx.close();
   }
 
+  // ---- 2h. DMAIC on a P&L (TPN-1, Phase 4b)
+  {
+    const DME = require('./math/dmaic.js'), R = DME.RULES, D = BANK.dmaic, cache = require('./data/dmaic-best.json');
+    const { ctx, page } = await newPage();
+    const usd = d => (d < 0 ? '−$' : '$') + Math.abs(d).toLocaleString('en-US');
+    ok(D && D.id === 'TPN-1' && JSON.stringify(D.best) === JSON.stringify(cache.best['8']) && JSON.stringify(D.best6) === JSON.stringify(cache.best['6']), 'dmaic: best plans from the agreed search (8 and 6 months)');
+    ok(D.lesson.concat(D.briefing, [D.blurb]).every(p => !/\{[A-Za-z0-9]+\}/.test(p)), 'dmaic: every placeholder filled');
+    ok([].concat(...D.best.moves).filter(m => m >= 4 && m <= 6).length === 2 && [].concat(...D.best6.moves).filter(m => m >= 4 && m <= 6).length === 0, 'dmaic: the 8-month best pilots both fixes; the 6-month best pilots none');
+    for (const lane of ['coo', 'quality']) { await page.goto(URL + '#lane-' + lane); await page.waitForSelector('#' + lane + '-dmaic'); ok(await page.locator('#' + lane + '-dmaic a[href="#run-tpn-1"]').count() === 1, 'dmaic: listed in the ' + lane + ' lane'); }
+    await page.goto(URL + '#run-tpn-1'); await page.waitForSelector('[data-act="dm-start"]');
+    ok(/Director/.test(await page.locator('main').textContent()) && /Draft/.test(await page.locator('main').textContent()), 'dmaic: intro shows level chips and Draft');
+    await act(page, 'dm-start'); await page.waitForSelector('#dm-causes');
+    ok(/Plant log/.test(await page.locator('#dm-causes').textContent()) && /^1 \(40%\)/.test(await page.locator('#dm-causes tbody tr').nth(2).locator('td').nth(1).textContent()), 'dmaic: before Measure the table shows the plant log, bar stock first');
+    ok(await page.locator('[data-act="dm-pick"][data-id="1"]').isDisabled() && await page.locator('[data-act="dm-pick"][data-id="10"]').isDisabled(), 'dmaic: Analyze and Control unavailable at the start');
+    await act(page, 'dm-pick', '0');
+    ok(!(await page.locator('[data-act="dm-pick"][data-id="1"]').isDisabled()), 'dmaic: Analyze opens once Measure is chosen the same month');
+    await act(page, 'dm-pick', '0');
+    ok(await page.locator('[data-act="dm-pick"][data-id="1"]').isDisabled(), 'dmaic: dropping Measure closes Analyze again');
+    // play the best plan through the page
+    for (let t = 0; t < R.months; t++) {
+      for (const m of D.best.moves[t]) await act(page, 'dm-pick', String(m));
+      await act(page, 'dm-run');
+      if (t === 0) { await page.waitForSelector('#dm-hist'); ok(/True rank/.test(await page.locator('#dm-causes').textContent()) && /45%/.test(await page.locator('#dm-causes').textContent()), 'dmaic: after Measure and Analyze, true rank and the fixture-wear share show');
+        await page.reload(); await page.waitForSelector('#dm-causes'); ok(/Month 2 of 8/.test(await page.locator('.playtop .meta').textContent()), 'dmaic: a reload keeps the run'); }
+      if (t === 2) ok(/removes 80%/.test(await page.locator('#dm-causes').textContent()), 'dmaic: the pilot shows how much the fixture-wear fix removes');
+    }
+    await page.waitForSelector('#dm-compare');
+    const sc = await page.locator('#dm-score .v').allTextContents();
+    ok(sc[0] === usd(D.ref.best8.score) && sc[0] === usd(cache.best['8'].score), 'dmaic: playing the best plan scores the best score (' + sc[0] + ')');
+    const rows = await page.locator('#dm-compare tbody tr').allTextContents();
+    ok(rows.length === 7 && rows[6].indexOf(usd(D.ref.nothing.score)) !== -1, 'dmaic: comparison has you, five named plans and do nothing');
+    ok(D.ref.logFirst.score < D.ref.nothing.score && D.ref.noMeasure.score < D.ref.best8.score && D.ref.noPilot8.score < D.ref.best8.score && D.ref.noControl.counted === 0, 'dmaic: the named plans fall short as the lesson says');
+    ok(await page.locator('main a[href="#lesson-ms-7"]').count() === 1 && await page.locator('main a[href="#packet-tp-2"]').count() === 1, 'dmaic: debrief links the Measure lesson and TP-2');
+    ok(await page.evaluate(() => window.__tp.dm.get('best').score) === D.ref.best8.score, 'dmaic: best score saved');
+    // a second run: an unpiloted fix shows a disrupted month; abandon ends the run
+    await act(page, 'dm-again'); await page.waitForSelector('[data-act="dm-start"]'); await act(page, 'dm-start'); await page.waitForSelector('#dm-causes');
+    await act(page, 'dm-pick', '7'); await act(page, 'dm-run'); await page.waitForSelector('#dm-hist'); await act(page, 'dm-run'); await page.waitForTimeout(50);
+    ok(/disrupted/.test(await page.locator('#dm-hist').textContent()), 'dmaic: an unpiloted fix disrupts the next month');
+    await act(page, 'dm-quit'); await page.locator('[data-cfm="ok"]').click(); await page.waitForSelector('[data-act="dm-start"]');
+    ok(await page.evaluate(() => { const g = window.__tp.dm.get('game'); return !g || g.done; }), 'dmaic: abandoning ends the run');
+    await ctx.close();
+  }
+
   // ---- 3. idle-write check (study-kit's method): a database that returns keys sorted; no writes once idle
   {
     const STORE = {};
@@ -517,6 +564,7 @@ function ok(c, m) { if (c) pass++; else { fails.push(m); console.log('FAIL', m);
     await page.goto(URL + '#lesson-df-1'); await page.waitForSelector('[data-act="pick"]'); await page.locator('[data-act="pick"][data-id="DF-01"][data-j="1"]').click();
     await page.goto(URL + '#beer-game'); await page.waitForSelector('[data-act="beer-start"]'); await act(page, 'beer-start'); await page.waitForSelector('#beer-qty'); await act(page, 'beer-order'); await page.waitForTimeout(200);
     await page.goto(URL + '#inventory-sim'); await page.waitForSelector('#inv-q'); await page.fill('#inv-q', '300'); await page.fill('#inv-rop', '250'); await act(page, 'inv-start'); await page.waitForSelector('#inv-news');
+    await page.goto(URL + '#run-tpn-1'); await page.waitForSelector('[data-act="dm-start"]'); await act(page, 'dm-start'); await page.waitForSelector('#dm-causes'); await act(page, 'dm-pick', '0'); await act(page, 'dm-run'); await page.waitForSelector('#dm-hist');
     await page.goto(URL + '#mock'); await page.waitForSelector('[data-act="mock-start"]'); await act(page, 'mock-start'); await page.waitForSelector('#mq'); await page.locator('[data-act="mock-pick"]').first().click();
     await page.waitForTimeout(5000);   // stays on the mock screen with its clock ticking
     const n = await page.evaluate(() => Object.assign({}, window.__sets));
@@ -525,6 +573,8 @@ function ok(c, m) { if (c) pass++; else { fails.push(m); console.log('FAIL', m);
     ok((n['data/users/u_loop/prefs'] || 0) >= 1, 'idle-write: prefs document written (' + JSON.stringify(n) + ')');
     ok(JSON.stringify(n2) === JSON.stringify(n), 'idle-write: no further writes once idle (' + JSON.stringify(n) + ' then ' + JSON.stringify(n2) + ')');
     ok(!n['data/users/u_loop/craft'] && !n['data/users/u_loop/sims'], 'idle-write: empty Craft and Simulations documents are never written');
+    const dmd = await page.evaluate(() => window.__docs['data/users/u_loop/dm']);
+    ok((n['data/users/u_loop/dm'] || 0) >= 1 && dmd && dmd.dm.game && JSON.stringify(dmd.dm.game.moves) === '[[0]]', 'idle-write: the DMAIC run in progress is in the account');
     ok((n['data/users/u_loop/decks'] || 0) >= 1 && (n['data/users/u_loop/beer'] || 0) >= 1 && (n['data/users/u_loop/mock'] || 0) >= 1 && (n['data/users/u_loop/inv'] || 0) >= 1, 'idle-write: decks, Beer Game, mock and inventory documents written');
     const iv = await page.evaluate(() => window.__docs['data/users/u_loop/inv']);
     ok(iv && iv.inv.game && iv.inv.game.dec.length === 1 && iv.inv.game.dec[0].q === 300, 'idle-write: the inventory game in progress is in the account');

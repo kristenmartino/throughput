@@ -30,7 +30,9 @@ module.exports = {
       { id: 'analyze', title: 'IV. Analyze', kind: 'Deck', questions: 18, phase: 2 },
       { id: 'improve', title: 'V. Improve', kind: 'Deck', questions: 16, phase: 2 },
       { id: 'control', title: 'VI. Control', kind: 'Deck', questions: 15, phase: 2 },
-      { id: 'mock', title: 'Timed mock (110 questions, 4 h 18 min)', kind: 'Mock exam', mock: 'mock', phase: 2 }
+      { id: 'mock', title: 'Timed mock (110 questions, 4 h 18 min)', kind: 'Mock exam', mock: 'mock', phase: 2 },
+      // Phase 4b: the DMAIC sim, also listed in the COO lane.
+      { id: 'dmaic', title: 'DMAIC on a P&L', kind: 'Simulation', route: '#run-tpn-1', phase: 4 }
     ],
     // Supply chain (Phase 3, approved Nov 24): the three sims, then one deck per CSCP module with ASCM's weight
     // (Read, CSCP ECM v5.0 preview, opened Nov 24: 10 / 10 / 17 / 19 / 9 / 17 / 10 / 8). Module titles from ASCM's
@@ -60,7 +62,9 @@ module.exports = {
       { id: 'coo5', title: '5. Operations strategy', kind: 'Deck', phase: 4 },
       { id: 'coo6', title: '6. Organizing operations', kind: 'Deck', phase: 4 },
       { id: 'cases', title: 'Craft packets', kind: 'Craft packets', phase: 4 },
-      { id: 'role-plays', title: 'Role-plays', kind: 'Role-plays', phase: 4 }
+      { id: 'role-plays', title: 'Role-plays', kind: 'Role-plays', phase: 4 },
+      // Phase 4b (approved Nov 25): DMAIC on a P&L, also listed in the Quality lane.
+      { id: 'dmaic', title: 'DMAIC on a P&L', kind: 'Simulation', route: '#run-tpn-1', phase: 4 }
     ]
   },
   // Exam facts shown on the lane screen (Read, asq.org/cert/six-sigma-green-belt, opened Nov 24).

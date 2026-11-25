@@ -1,0 +1,57 @@
+{
+ "hash": "74338e020b28f2f4cb2ea0220c08f8620ebbc7e5081a5e72c8c3257c938a0fae",
+ "best": {
+  "6": {
+   "moves": [
+    [
+     0
+    ],
+    [
+     1,
+     2
+    ],
+    [
+     7,
+     8
+    ],
+    [],
+    [
+     10
+    ],
+    []
+   ],
+   "score": 2163552,
+   "states": 51099,
+   "months": 6
+  },
+  "8": {
+   "moves": [
+    [
+     0,
+     1
+    ],
+    [
+     2,
+     4
+    ],
+    [
+     5,
+     7
+    ],
+    [
+     8
+    ],
+    [
+     10
+    ],
+    [],
+    [],
+    []
+   ],
+   "score": 2852960,
+   "states": 252973,
+   "months": 8
+  }
+ },
+ "note": "Memoized search over every legal plan, JS and Python agreed"
+}

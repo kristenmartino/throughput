@@ -5,7 +5,7 @@
 'use strict';
 const { execFileSync } = require('child_process');
 const path = require('path');
-const NJ = require('./numbers.js'), BG = require('./beer.js'), IE = require('./inventory.js'), BN = require('./bottleneck.js');
+const NJ = require('./numbers.js'), BG = require('./beer.js'), IE = require('./inventory.js'), BN = require('./bottleneck.js'), DM = require('./dmaic.js');
 const INV = require('../data/inventory.json');
 
 function py(file, input, args) { return JSON.parse(execFileSync('python3', ['-I', path.join(__dirname, file)].concat(args || []), { input: input || '', maxBuffer: 1 << 28, timeout: 3600000 }).toString()); }
@@ -79,7 +79,43 @@ function check(usedFormats) {
   if (fresh) { bb = BN.best(); n++; if (JSON.stringify(bb) !== JSON.stringify(BP.best)) errs.push('bottleneck best plan differs: ' + JSON.stringify(bb) + ' vs ' + JSON.stringify(BP.best));
     else fs.writeFileSync(cacheF, JSON.stringify({ hash, best: bb, note: 'Exhaustive search, JS and Python agreed' }, null, 1) + '\n'); }
   else { bb = cache.best; n++; const s = BN.stats(BN.play(bb)); if (s.profit !== bb.profit) errs.push('cached bottleneck best plan no longer replays to its profit'); }
-  return { errs, n, beer: js, inventory: { textbook: IE.textbook(INV), hindsight: hs }, bottleneck: { best: bb } };
+  // ---- DMAIC on a P&L (TPN-1): 400 seeded random plans (some cut short, many breaking a rule) plus named ones, at 8 and
+  // 6 months, and the best-plan search for both lengths. The Python search takes about 16 s, so the agreed result is
+  // cached in data/dmaic-best.json under a hash of both engine files and rerun in both languages when either changes.
+  const dp = [{ moves: Array(8).fill([]) }, { moves: Array(6).fill([]), months: 6 }];
+  for (let k = 0; k < 400; k++) {
+    const M = k % 3 ? 8 : 6, len = k % 7 === 0 ? k % M : M;
+    // Most plans pick random legal moves within the budget; one in ten picks any codes, to test the rule checks.
+    const done = {}, moves = []; let money = DM.RULES.budget;
+    for (let t = 0; t < len; t++) {
+      const set = [], c = Math.floor(rnd() * 3);
+      for (let j = 0; j < c; j++) {
+        const cand = k % 10 === 0 ? [Math.floor(rnd() * DM.MOVES)] : Array.from({ length: DM.MOVES }, (_, m) => m).filter(m => set.indexOf(m) === -1 && (set.length === 0 || m > set[set.length - 1]) && DM.legal(m, t, done) && DM.moveCost(m) <= money);
+        if (!cand.length) break;
+        const m = cand[Math.floor(rnd() * cand.length)]; set.push(m); done[m] = t; money -= DM.moveCost(m);
+      }
+      moves.push(set);
+    }
+    dp.push({ months: M, moves });
+  }
+  const dhash = crypto.createHash('sha256').update(fs.readFileSync(path.join(__dirname, 'dmaic.js'))).update(fs.readFileSync(path.join(__dirname, 'dmaic.py'))).digest('hex');
+  const dcacheF = path.join(__dirname, '..', 'data', 'dmaic-best.json');
+  let dcache = null; try { dcache = JSON.parse(fs.readFileSync(dcacheF, 'utf8')); } catch (e) { dcache = null; }
+  const dfresh = !(dcache && dcache.hash === dhash);
+  const DP = py('dmaic.py', JSON.stringify({ plans: dp }), dfresh ? ['--best'] : []);
+  let dmOk = 0;
+  dp.forEach((p, i) => { const o = { months: p.months || DM.RULES.months }, a = DM.play(p, o), b2 = DP.plans[i];
+    for (const k in a.h) { n += a.h[k].length; if (JSON.stringify(a.h[k]) !== JSON.stringify(b2.h[k])) errs.push('dmaic plan ' + i + ' ' + k + ' differs'); }
+    if (a.waiting !== b2.waiting || a.spent !== b2.spent) errs.push('dmaic plan ' + i + ' pause or spend differs');
+    if (a.waiting < 0) { dmOk++; const s = DM.stats(a), t = b2.stats; n += 5;
+      for (const k of ['contrib', 'counted', 'score', 'spent', 'disrupted']) if (s[k] !== t[k]) errs.push('dmaic plan ' + i + ' ' + k + ': JS ' + s[k] + ' vs Python ' + t[k]); } });
+  if (dmOk < 50) errs.push('dmaic: only ' + dmOk + ' random plans ran to the end; the cross-check is too thin');
+  let db;
+  if (dfresh) { db = { 8: DM.best({ months: 8 }), 6: DM.best({ months: 6 }) }; n += 2;
+    if (JSON.stringify(db) !== JSON.stringify(DP.best)) errs.push('dmaic best plans differ: ' + JSON.stringify(db) + ' vs ' + JSON.stringify(DP.best));
+    else fs.writeFileSync(dcacheF, JSON.stringify({ hash: dhash, best: db, note: 'Memoized search over every legal plan, JS and Python agreed' }, null, 1) + '\n'); }
+  else { db = dcache.best; n += 2; for (const m of ['8', '6']) { const s = DM.stats(DM.play({ moves: db[m].moves }, { months: +m })); if (s.score !== db[m].score) errs.push('cached dmaic best plan (' + m + ' months) no longer replays to its score'); } }
+  return { errs, n, beer: js, inventory: { textbook: IE.textbook(INV), hindsight: hs }, bottleneck: { best: bb }, dmaic: { best: db, randomFinished: dmOk } };
 }
 module.exports = { check };
 if (require.main === module) { const r = check(); console.log(r.errs.length ? r.errs.join('\n') : 'ok, ' + r.n + ' values'); }

@@ -245,6 +245,48 @@ const bottleneck = (() => {
     lesson: BNC.lesson.map((p, i) => f(p, 'lesson ' + i)), sources: BNC.sources.map(k => SRC[k]), best, bestText: planText(best), ref: { push, rope } };
 })();
 
+// ---- DMAIC on a P&L (TPN-1, Phase 4b): engine math/dmaic.js, checked against math/dmaic.py above. The lesson's claims
+// are asserted here, so a change to the rules that breaks one stops the build.
+const DM = require('./math/dmaic.js'), DMC = require('./content/dmaic.js');
+claim(DMC.id, 'game');
+const dmaic = (() => {
+  const R = DM.RULES, C = mc.dmaic.best, b8 = C[8], b6 = C[6], usd = d => (d < 0 ? '−$' : '$') + Math.abs(d).toLocaleString('en-US');
+  const run = (mv, M) => { M = M || R.months; const p = { moves: mv.concat(Array(M - mv.length).fill([])) }, r = DM.play(p, { months: M }); if (r.error || r.waiting >= 0) errors.push('dmaic: named plan did not run: ' + JSON.stringify(mv)); return DM.stats(r); };
+  const nothing = run([]), best8 = run(b8.moves), logFirst = run([[9]]), noMeasure = run([[7, 8], [10]]), noPilot8 = run(b6.moves.slice(0, 5)), noControl = run(b8.moves.map(s => s.filter(m => m !== 10)));
+  const best6 = run(b6.moves, 6), piloted6 = run(b8.moves.slice(0, 6), 6);
+  const flat = mv => [].concat(...mv), has = (mv, m) => flat(mv).indexOf(m) !== -1, when = (mv, m) => mv.findIndex(s => s.indexOf(m) !== -1);
+  // Each lesson claim, asserted from the engine.
+  if (best8.score !== b8.score || best6.score !== b6.score) errors.push('dmaic: best plans do not replay to their scores');
+  if (!has(b8.moves, 0) || !has(b8.moves, 1) || !has(b8.moves, 2) || !has(b8.moves, 10) || has(b8.moves, 9)) errors.push('dmaic lesson 1: the best 8-month plan should measure, analyze both real causes, add a control plan and leave bar stock alone');
+  if (!(has(b8.moves, 4) && when(b8.moves, 4) < when(b8.moves, 7) && has(b8.moves, 5) && when(b8.moves, 5) < when(b8.moves, 8))) errors.push('dmaic lesson 4: the best 8-month plan should pilot both fixes first');
+  if (!(logFirst.score < nothing.score) || logFirst.disrupted !== 1) errors.push('dmaic lesson 2: fixing bar stock first should lose money against doing nothing');
+  if (!(noMeasure.score < best8.score)) errors.push('dmaic lesson 3: skipping Measure and Analyze should cost');
+  if (has(b6.moves, 4) || has(b6.moves, 5) || has(b6.moves, 6) || !(noPilot8.score < best8.score) || noPilot8.disrupted < 1) errors.push('dmaic lessons 4-5: pilots should pay at 8 months and not at 6');
+  if (JSON.stringify(b6.moves.slice(0, 5).concat([[]])) !== JSON.stringify(b6.moves) || !(piloted6.score < best6.score)) errors.push('dmaic lesson 5: the 6-month best should be the no-pilot plan and beat the piloted one');
+  if (!(noControl.counted === 0 && noControl.score < best8.score)) errors.push('dmaic lesson 6: without a control plan finance should count nothing');
+  if (!(when(b6.moves, 8) < when(b8.moves, 8) && when(b6.moves, 7) === when(b8.moves, 7))) errors.push('dmaic lesson 4: skipping pilots should bring only the setup fix forward');
+  if (!(piloted6.counted < best6.counted && piloted6.counted > 0)) errors.push('dmaic lesson 5: the piloted 6-month plan should count less, not nothing');
+  const names = ['Measure', 'Analyze fixture wear', 'Analyze setup', 'Analyze bar stock', 'Pilot the fixture-wear fix', 'Pilot the setup fix', 'Pilot the bar-stock fix', 'Fix fixture wear', 'Fix setup', 'Fix bar stock', 'Control plan'];
+  const planText = mv => mv.map((s, t) => s.length ? 'month ' + (t + 1) + ', ' + s.map(m => names[m].charAt(0).toLowerCase() + names[m].slice(1)).join(' and ') : null).filter(Boolean).join('; ');
+  const pct = (x, d) => (100 * x).toFixed(d === undefined ? 1 : d) + '%', base = R.defects.reduce((a, b) => a + b, 0);
+  const V = { months: R.months, months6: 6, perMonth: R.perMonth, budget: usd(R.budget), units: R.units.toLocaleString('en-US'), price: usd(R.price), varCost: usd(R.varCost), handling: usd(R.handling),
+    baseDefects: base.toLocaleString('en-US'), baseRate: pct(base / R.units), baseMonth: usd(nothing.baseMonth), baseRun: usd(nothing.score),
+    measureCost: usd(R.cost.measure), analyzeCost: usd(R.cost.analyze), pilotCost: usd(R.cost.pilot), controlCost: usd(R.cost.control),
+    implCosts: R.causes.slice(0, 3).map((c, i) => c.toLowerCase() + ' ' + usd(R.cost.implement[i])).join(', '), disruptPct: pct(R.disruptUnits / R.units, 0), slipAfter: R.slipAfter,
+    best8Score: usd(best8.score), best8Text: planText(b8.moves), best8Spent: usd(best8.spent), best8EndRate: pct(best8.endRate), best8Counted: usd(best8.counted),
+    logFirstCost: usd(R.cost.implement[2]), logFirstScore: usd(logFirst.score), noMeasureScore: usd(noMeasure.score), noMeasureGap: usd(best8.score - noMeasure.score),
+    noPilot8Text: planText(b6.moves.slice(0, 5)), noPilot8Score: usd(noPilot8.score), piloted6Counted: usd(piloted6.counted), best6Counted: usd(best6.counted), noPilotGap: usd(best8.score - noPilot8.score), best6Text: planText(b6.moves), best6Score: usd(best6.score), piloted6Score: usd(piloted6.score), pilot6Gap: usd(best6.score - piloted6.score),
+    noControlScore: usd(noControl.score), noControlGap: usd(best8.score - noControl.score) };
+  const f = (t, w) => t.replace(/\{([A-Za-z0-9]+)\}/g, (m, k) => { if (!(k in V)) { errors.push('dmaic ' + w + ': unknown {' + k + '}'); return m; } return String(V[k]); });
+  DMC.lesson.forEach((p, i) => { if (!/\((Read|Relayed|Inferred|Measured|Computed)/.test(p)) errors.push('dmaic lesson ' + (i + 1) + ': needs a tier tag'); });
+  const lessonIds = new Set([].concat(...DECKS.map(d => d.lessons.map(l => l.id))));
+  for (const [id] of DMC.links) if (!lessonIds.has(id)) errors.push('dmaic: unknown lesson ' + id);
+  if (badLevels(DMC.levels)) errors.push('dmaic: bad levels');
+  return { id: DMC.id, title: DMC.title, status: DMC.status, levels: DMC.levels, blurb: f(DMC.blurb, 'blurb'), briefing: DMC.briefing.map((p, i) => f(p, 'briefing ' + i)),
+    lesson: DMC.lesson.map((p, i) => f(p, 'lesson ' + i)), links: DMC.links, packet: DMC.packet, sources: DMC.sources.map(k => SRC[k]), names,
+    best: b8, best6: b6, bestText: planText(b8.moves), ref: { nothing, best8, logFirst, noMeasure, noPilot8, noControl, best6, piloted6 } };
+})();
+
 // ---- Inventory sim (Phase 3): rules and demand in data/inventory.json; engine math/inventory.js, checked against
 // math/inventory.py above. {key} placeholders in its text come from the checked engine.
 const INVD = require('./data/inventory.json'), IE = require('./math/inventory.js'), INVC = require('./content/inventory.js');
@@ -298,7 +340,7 @@ const PUB = path.join(here, 'published-ids.json');
 const pub = JSON.parse(fs.readFileSync(PUB, 'utf8'));
 const now = { lanes: laneIds, sections: sectionIds, craft: craft.ids, sims: sims.ids,
   lessons: [].concat(...DECKS.map(d => d.lessons.map(l => l.id))), questions: [].concat(...DECKS.map(d => d.questions.map(q => q.id))),
-  cards: [].concat(...DECKS.map(d => d.cards.map(c => c.id))), decks: DECKS.map(d => d.id), games: [BEER.id, INVC.id, BNC.id], mocks: [MOCK.id, CSCP.id], mockQuestions: [].concat(...[MOCK, CSCP].map(m => [].concat(...Object.values(m.pool).map(l => l.map(q => q.id))))) };
+  cards: [].concat(...DECKS.map(d => d.cards.map(c => c.id))), decks: DECKS.map(d => d.id), games: [BEER.id, INVC.id, BNC.id, DMC.id], mocks: [MOCK.id, CSCP.id], mockQuestions: [].concat(...[MOCK, CSCP].map(m => [].concat(...Object.values(m.pool).map(l => l.map(q => q.id))))) };
 for (const k of Object.keys(pub)) if (k !== 'note' && !(k in now)) errors.push('published-ids.json has an unknown kind ' + k);
 for (const k of Object.keys(now)) for (const id of (pub[k] || [])) if (now[k].indexOf(id) === -1) errors.push('published ' + k + ' id ' + id + ' is missing; links depend on it');
 if (errors.length) { console.error(errors.join('\n')); process.exit(1); }
@@ -315,14 +357,14 @@ const ref = { average: mc.beer.all_average, benchSeat: mc.beer.bench_in_seat }; 
 const BG = require('./math/beer.js');
 const beer = { id: BEER.id, title: BEER.title, status: BEER.status, blurb: BEER.blurb, briefing: BEER.briefing, lesson: BEER.lesson, sources: BEER.sources.map(k => SRC[k]),
   refTeam2: { average: BG.stats(ref.average).team2, bench: BG.stats(mc.beer.all_bench).team2 }, benchAll2: BG.stats(mc.beer.all_bench).stages.map(s => s.cost2), benchTeam2: ref.benchSeat.map(g => BG.stats(g).team2) };
-const bank = { levels: L.levels, lanes: L.lanes, sections: L.sections, exam: L.exam, craft: craft.packets, runs: sims.runs, roleplays: sims.roleplays, kitVersion, decks: DECKS, beer, inventory, bottleneck, mock: MOCK, mocks: { mock: MOCK, cscp: CSCP } };
+const bank = { levels: L.levels, lanes: L.lanes, sections: L.sections, exam: L.exam, craft: craft.packets, runs: sims.runs, roleplays: sims.roleplays, kitVersion, decks: DECKS, beer, inventory, bottleneck, dmaic, mock: MOCK, mocks: { mock: MOCK, cscp: CSCP } };
 const LS = String.fromCharCode(0x2028), PS = String.fromCharCode(0x2029);
 const json = JSON.stringify(bank).replace(/<\//g, '<\\/').split(LS).join('\\u2028').split(PS).join('\\u2029');
 const tpl = read('index.src.html');
-for (const t of ['__BANK__', '__STUDY_KIT__', '__SHELL_CSS__', '__KIT_CSS__', '__BEER_ENGINE__', '__INV_ENGINE__', '__BN_ENGINE__']) if (tpl.split(t).length !== 2) { console.error('template must contain one ' + t); process.exit(1); }
+for (const t of ['__BANK__', '__STUDY_KIT__', '__SHELL_CSS__', '__KIT_CSS__', '__BEER_ENGINE__', '__INV_ENGINE__', '__BN_ENGINE__', '__DM_ENGINE__']) if (tpl.split(t).length !== 2) { console.error('template must contain one ' + t); process.exit(1); }
 const kit = read('vendor/study-kit/study-kit.js').replace(/<\//g, '<\\/');
 const out = tpl.replace('__SHELL_CSS__', () => read('vendor/study-kit/shell.css')).replace('__KIT_CSS__', () => read('vendor/study-kit/study-kit.css'))
-  .replace('__STUDY_KIT__', () => kit).replace('__BEER_ENGINE__', () => read('math/beer.js').replace(/<\//g, '<\\/')).replace('__INV_ENGINE__', () => read('math/inventory.js').replace(/<\//g, '<\\/')).replace('__BN_ENGINE__', () => read('math/bottleneck.js').replace(/<\//g, '<\\/')).replace('__BANK__', () => json);
+  .replace('__STUDY_KIT__', () => kit).replace('__BEER_ENGINE__', () => read('math/beer.js').replace(/<\//g, '<\\/')).replace('__INV_ENGINE__', () => read('math/inventory.js').replace(/<\//g, '<\\/')).replace('__BN_ENGINE__', () => read('math/bottleneck.js').replace(/<\//g, '<\\/')).replace('__DM_ENGINE__', () => read('math/dmaic.js').replace(/<\//g, '<\\/')).replace('__BANK__', () => json);
 fs.mkdirSync(path.join(here, 'build'), { recursive: true });
 fs.writeFileSync(path.join(here, 'build', 'index.html'), out);
 fs.writeFileSync(path.join(here, 'build', 'bank.json'), JSON.stringify(bank));   // for the blind-check export; not published
