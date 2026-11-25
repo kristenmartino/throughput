@@ -1,6 +1,6 @@
 # A Green Belt project the CFO will check
 
-Alder Packaging (fictional) runs a thermoforming line that scraps too many trays. You sponsor a Green Belt project as the operations leader, and the CFO has said she will only count savings finance can see. Figures and companies are invented.
+Alder Packaging (fictional) runs a thermoforming line that scraps too many trays. You sponsor a Green Belt project as the operations leader, and the CFO has said she will only count savings finance can see, and only after three stable months. Figures and companies are invented.
 
 ## Packet
 
@@ -8,7 +8,7 @@ Alder Packaging (fictional) runs a thermoforming line that scraps too many trays
 
 - The line makes {{tp2.units}} trays a month.
 - Defect rate over the last six months: {{tp2.defBase|%1}}.
-- Each defective tray costs ${{tp2.costDef}} in material and rework.
+- Each defective tray is scrapped, not reworked, at ${{tp2.costDef}} of material and energy.
 - Goal set by the plant: {{tp2.defTarget|%1}}.
 
 ### What the team found
@@ -70,12 +70,12 @@ Mold temperature explains about {{tp2.nTemp}} defects a month and operator setup
 
 - Control chart on mold temperature and on the defect rate, with a reaction plan.
 - Setup sheet in the standard work, with audits.
-- Run at least three months before calling the result stable.
+- Run three stable months, the CFO's rule, before the saving counts.
 
 ### Stage 4
 
-- Claim {{tp2.saveMo|$}} a month ({{tp2.saveYr|$}} a year), counted month by month as it is confirmed, not booked up front.
-- Check the resin change: compare defect rates by resin lot or run a short trial with the old grade, so the project claims only its own share.
+- Claim up to {{tp2.saveMo|$}} a month ({{tp2.saveYr|$}} a year), counted from the third stable month, not booked up front.
+- Check the resin change: compare defect rates by resin lot or run a short trial with the old grade, and reduce the claim by any share the resin change explains.
 - "Savings are counted as each month confirms them; the resin change is being checked so we claim only what the fix caused."
 
 ## Grading notes

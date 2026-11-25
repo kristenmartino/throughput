@@ -15,9 +15,10 @@ Finished stock is at the safety target; none is free to use. The family sells at
 
 ### Options from the plant and planning
 
-- Overtime: up to {{tp3.otMo}} units a month, at ${{tp3.otCost}} a unit above regular cost.
+- Overtime: up to {{tp3.otMo}} units a month in months 2 and 3 (month 1 is booked for maintenance), at ${{tp3.otCost}} a unit above regular cost.
 - Build ahead: the plant has room for {{tp3.prebuild}} extra units this month (before month 1). Holding them costs about ${{tp3.carryU}} a unit until they ship.
 - No co-packer can qualify in under five months.
+- Month 4 demand is forecast at {{tp3.m4}} units, below regular capacity.
 
 ### Note from the sales director
 
@@ -49,7 +50,7 @@ Planted: a flexible promotion date that sales would rather not raise, and a buil
 
 ### Promotion
 
-Moving Coastal's {{tp3.promo}}-unit promotion out of month 3 covers the remaining {{tp3.left}} units with {{tp3.spareAfterPromo}} to spare. Coastal has said the dates are flexible.
+Moving Coastal's {{tp3.promo}}-unit promotion to month 4 covers the remaining {{tp3.left}} units with {{tp3.spareAfterPromo}} to spare, and month 4 has room for it. Coastal has said the dates are flexible. If Coastal moves, less build-ahead would be needed, but the build-ahead window closes this month, before Coastal answers, so approving it keeps the option open.
 
 ## Model answer
 
@@ -67,7 +68,7 @@ Moving Coastal's {{tp3.promo}}-unit promotion out of month 3 covers the remainin
 
 ### Stage 3
 
-- Ask sales to offer Coastal a promotion date in the following month. Coastal said dates are flexible; the risk of asking is low and the gain closes the gap.
+- Ask sales to offer Coastal a promotion date in month 4, which has spare capacity. Coastal said dates are flexible; the risk of asking is low and the gain closes the gap.
 - If Coastal will not move, agree which orders are short by {{tp3.left}} units, using customer priority rules, before month 3 starts.
 - Do not let the remaining gap go undecided and fall to whoever orders last.
 

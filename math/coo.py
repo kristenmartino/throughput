@@ -39,7 +39,7 @@ def compute_coo():
     o = dict(carry=0.25, offUnit=20, offFreight=2.5, offDutyRate=0.05, offDays=40, nearUnit=22.5, nearFreight=0.8, nearDays=7, vol=200000)
     o['offDuty'] = 1.0; o['offBase'] = 23.5; o['offPipe'] = 23.5 * 0.25 * 40 / 365; o['offTotal'] = 23.5 + o['offPipe']
     o['nearBase'] = 23.3; o['nearPipe'] = 23.3 * 0.25 * 7 / 365; o['nearTotal'] = 23.3 + o['nearPipe']
-    o['gapU'] = o['offTotal'] - o['nearTotal']; o['gapYr'] = o['gapU'] * 200000; o['priceGap'] = 2.5; o['offNoPipe'] = 23.5
+    o['gapU'] = o['offTotal'] - o['nearTotal']; o['gapYr'] = o['gapU'] * 200000; o['priceGap'] = 2.5; o['gapYrK'] = round(o['gapYr'] / 1000) * 1000; o['offNoPipe'] = 23.5
     o['offNoDuty'] = o['offTotal'] - 1.0; o['priceGapYr'] = 500000
     put('c4', o)
 
@@ -72,7 +72,7 @@ def compute_coo():
     o = dict(lines=2000, onTime=1720, inFull=1800, both=1640, mCap=150, mMat=120, mPlan=60, mCarrier=30, target=0.95, l2Load=1150, l2Cap=1000)
     o['otif'] = 1640 / 2000; o['ot'] = 0.86; o['inf'] = 0.90; o['otifWrong'] = 0.86 * 0.90
     o['miss'] = 360; o['mSum'] = 360; o['top2'] = 270 / 360; o['capShare'] = 150 / 360
-    o['fixTop2'] = (1640 + 270) / 2000; o['fixAll'] = 1; o['l2Util'] = 1.15; o['l2Over'] = 150
+    o['fixTop2'] = (1640 + 270) / 2000; o['fixNeed'] = (0.95 * 2000 - 1640) / 270; o['fixAll'] = 1; o['l2Util'] = 1.15; o['l2Over'] = 150
     put('tp1', o)
 
     o = dict(units=25000, defBase=0.048, defTarget=0.020, defAfter=0.019, costDef=60, cTemp=0.45, cOper=0.25, cMat=0.20, cOther=0.10)
@@ -82,10 +82,10 @@ def compute_coo():
     o['top2Share'] = 0.70
     put('tp2', o)
 
-    o = dict(d1=12000, d2=13000, d3=14000, cap=11200, invOver=0, price=120, cmU=40, otMo=1000, otCost=8, prebuild=1500, carryU=3)
+    o = dict(d1=12000, d2=13000, d3=14000, cap=11200, invOver=0, price=120, cmU=40, otMo=1500, otCost=8, prebuild=1500, carryU=3)
     o['demand'] = 39000; o['supply'] = 33600; o['gap'] = 5400; o['revRisk'] = 5400 * 120; o['cmRisk'] = 5400 * 40
     o['otUnits'] = 3000; o['otCm'] = 3000 * 32; o['prebuildCost'] = 4500; o['left'] = 5400 - 3000 - 1500; o['leftRev'] = o['left'] * 120
-    o['prebuildCm'] = 1500 * 37; o['gapNoQ3'] = 25000 - 22400; o['otSpend'] = 24000; o['promo'] = 2000; o['spareAfterPromo'] = 2000 - 900
+    o['prebuildCm'] = 1500 * 37; o['gapNoQ3'] = 25000 - 22400; o['otSpend'] = 24000; o['promo'] = 2000; o['m4'] = 9500; o['spareAfterPromo'] = 2000 - 900
     put('tp3', o)
 
     o = dict(rev=40, gm0=0.30, gm1=0.28, bPrice=-0.004, bMix=-0.006, bMat=-0.012, bOps=0.002)

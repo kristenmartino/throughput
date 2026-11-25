@@ -20,7 +20,7 @@ module.exports = {
     ] },
     { id: 'cpo1-3', title: 'Savings finance will believe', bok: 'P1.C', status: D, levels: [VP, C], sources: ['gepSave', 'stampliSave'], body: [
       'Hard savings are a reduction from the prior price for the same or similar item, showing up in the budget. Cost avoidance is a future increase that was prevented; it protects the budget but does not shrink it. (Relayed, GEP and Stampli)',
-      'A part bought last year at ${{cp1.oldP}} is now ${{cp1.newP}}, on {{cp1.vol}} units: {{cp1.hard|$}} of hard savings. The market rose {{cp1.mktRise|%0}} to ${{cp1.mktP}}, so against market the deal avoided {{cp1.avoid|$}}, of which {{cp1.avoidOnly|$}} is avoidance only. (Computed)',
+      'A part bought last year at ${{cp1.oldP}} is now ${{cp1.newP}}, on {{cp1.vol}} units: {{cp1.hard|$}} of hard savings. The market rose {{cp1.mktRise|%0}} to ${{cp1.mktP}}; taking that market price as the baseline, the deal avoided {{cp1.avoid|$}}, of which {{cp1.avoidOnly|$}} is avoidance only. (Computed)',
       'Report the two separately. Folding avoidance into savings is the most common reason finance stops trusting procurement\'s numbers. (Relayed, Stampli)',
       'Agree the baseline and the definitions with finance before reporting, and track whether negotiated prices are actually paid. (Relayed, Stampli)'
     ] },

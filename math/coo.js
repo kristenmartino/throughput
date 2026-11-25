@@ -48,7 +48,7 @@ function computeCoo() {
     o.offBase = o.offUnit + o.offFreight + o.offDuty; o.offPipe = o.offBase * o.carry * o.offDays / 365; o.offTotal = o.offBase + o.offPipe;
     o.nearUnit = 22.5; o.nearFreight = 0.8; o.nearDays = 7;
     o.nearBase = o.nearUnit + o.nearFreight; o.nearPipe = o.nearBase * o.carry * o.nearDays / 365; o.nearTotal = o.nearBase + o.nearPipe;
-    o.gapU = o.offTotal - o.nearTotal; o.vol = 200000; o.gapYr = o.gapU * o.vol; o.priceGap = o.nearUnit - o.offUnit;
+    o.gapU = o.offTotal - o.nearTotal; o.vol = 200000; o.gapYr = o.gapU * o.vol; o.priceGap = o.nearUnit - o.offUnit; o.gapYrK = Math.round(o.gapYr / 1000) * 1000;
     o.offNoPipe = o.offBase; o.offNoDuty = o.offTotal - o.offDuty; o.priceGapYr = o.priceGap * o.vol;
     S.c4 = o;
   }
@@ -86,7 +86,7 @@ function computeCoo() {
     o.otif = o.both / o.lines; o.ot = o.onTime / o.lines; o.inf = o.inFull / o.lines; o.otifWrong = o.ot * o.inf;
     o.miss = o.lines - o.both; o.mCap = 150; o.mMat = 120; o.mPlan = 60; o.mCarrier = 30;
     o.mSum = o.mCap + o.mMat + o.mPlan + o.mCarrier; o.top2 = (o.mCap + o.mMat) / o.miss; o.capShare = o.mCap / o.miss;
-    o.target = 0.95; o.fixTop2 = (o.both + o.mCap + o.mMat) / o.lines; o.fixAll = 1;
+    o.target = 0.95; o.fixNeed = (o.target * o.lines - o.both) / (o.mCap + o.mMat); o.fixTop2 = (o.both + o.mCap + o.mMat) / o.lines; o.fixAll = 1;
     o.l2Load = 1150; o.l2Cap = 1000; o.l2Util = o.l2Load / o.l2Cap; o.l2Over = o.l2Load - o.l2Cap;
     S.tp1 = o;
   }
@@ -103,9 +103,9 @@ function computeCoo() {
     const o = {};
     o.d1 = 12000; o.d2 = 13000; o.d3 = 14000; o.cap = 11200; o.invOver = 0; o.price = 120; o.cmU = 40;
     o.demand = o.d1 + o.d2 + o.d3; o.supply = o.cap * 3; o.gap = o.demand - o.supply; o.revRisk = o.gap * o.price; o.cmRisk = o.gap * o.cmU;
-    o.otMo = 1000; o.otCost = 8; o.otUnits = o.otMo * 3; o.otCm = o.otUnits * (o.cmU - o.otCost);
+    o.otMo = 1500; o.otCost = 8; o.otUnits = o.otMo * 2; o.otCm = o.otUnits * (o.cmU - o.otCost);
     o.prebuild = 1500; o.carryU = 3; o.prebuildCost = o.prebuild * o.carryU; o.left = o.gap - o.otUnits - o.prebuild;
-    o.leftRev = o.left * o.price; o.prebuildCm = o.prebuild * (o.cmU - o.carryU); o.gapNoQ3 = o.d1 + o.d2 - 2 * o.cap; o.otSpend = o.otUnits * o.otCost; o.promo = 2000; o.spareAfterPromo = o.promo - o.left;
+    o.leftRev = o.left * o.price; o.prebuildCm = o.prebuild * (o.cmU - o.carryU); o.gapNoQ3 = o.d1 + o.d2 - 2 * o.cap; o.otSpend = o.otUnits * o.otCost; o.promo = 2000; o.m4 = 9500; o.spareAfterPromo = o.promo - o.left;
     S.tp3 = o;
   }
   { // TPL-2: gross margin bridge for the CEO review
