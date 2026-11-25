@@ -26,7 +26,7 @@ module.exports = {
       'The order of the steps changes the split slightly; agree a convention with finance and keep it. (Inferred)'
     ] },
     { id: 'coo2-4', title: 'Working capital and the cash conversion cycle', bok: 'C2.D', status: D, levels: [VP, C], sources: ['ccc'], body: [
-      'The cash conversion cycle (CCC) is days inventory outstanding plus days sales outstanding minus days payable outstanding: how long cash is tied up between paying suppliers and collecting from customers. (Relayed, AFP)',
+      'The cash conversion cycle (CCC) is days inventory outstanding plus days sales outstanding minus days payable outstanding: the average time between paying for inputs and collecting payment for the goods. (Read, AFP)',
       'With {{c2.dio}} days of inventory, {{c2.dso}} days of receivables and {{c2.dpo}} days of payables, the CCC is {{c2.ccc}} days. (Computed)',
       'Operations owns most of the inventory days. With cost of goods sold of {{c2.cogsDay|$}} a day, cutting {{c2.dioCut}} days of inventory frees {{c2.cashFreed|$}} of cash once. It is a one-time release, not an annual saving. (Computed)',
       'Stretching supplier payment terms also shortens the cycle, but it moves cost and risk to suppliers and can raise prices or weaken a critical supplier. (Inferred)'
