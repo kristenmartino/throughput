@@ -6,22 +6,22 @@ module.exports = {
   deck: { id: 'coo5', lane: 'coo', leveled: true, bokLabel: 'COO module', title: '5. Operations strategy', bok: 'C5', prefix: 'coo5', qPrefix: 'COO5', cPrefix: 'COO5C' },
   lessons: [
     { id: 'coo5-1', title: 'Order winners and qualifiers', bok: 'C5.A', status: D, levels: [VP, C], sources: ['hill'], body: [
-      'Terry Hill split what customers want into two groups. Order qualifiers get a company onto the shortlist; falling short loses the order. Order winners decide who gets the order among those that qualify. (Relayed, Hill via Encyclopedia of Management)',
-      'Qualifiers are not less important; they are different. Missing one loses business, but beating the market on one wins little extra. (Relayed, Hill via Encyclopedia of Management)',
-      'Winners and qualifiers shift over time and by market. Quality that once won orders often becomes a qualifier as competitors catch up. (Relayed, Hill via Encyclopedia of Management)',
-      'Operations strategy starts here: invest to lead on the winners and to stay adequate on the qualifiers. Study how customers actually buy, since what they say and what they do can differ. (Relayed, Hill via Encyclopedia of Management)'
+      'Terry Hill split what customers want into two groups. Order qualifiers get a company onto the shortlist; falling short loses the order. Order winners decide who gets the order among those that qualify. (Read, Encyclopedia of Management on Hill)',
+      'Qualifiers are not less important; they are different. To qualify, a firm needs only to be as good as its competitors; to win, it must be better. (Read, Encyclopedia of Management on Hill)',
+      'Criteria are specific to a market and a time. By the late 1990s, quality and price had become qualifiers in many markets, while delivery speed and customization won orders. (Read, Encyclopedia of Management on Hill)',
+      'Operations strategy starts here: invest to lead on the winners and to stay adequate on the qualifiers. Study how customers actually buy, since what they say and what they do can differ. (Read, Encyclopedia of Management on Hill)'
     ] },
     { id: 'coo5-2', title: 'Process choice and the product-process matrix', bok: 'C5.B', status: D, levels: [DIR, VP], sources: ['hayesW'], body: [
-      'Hayes and Wheelwright matched process types to product volume and variety: job shops for low-volume custom work, batch for several products, assembly lines for high-volume standard products, and continuous flow for commodities. Most firms sit near the diagonal. (Relayed, Hayes and Wheelwright via Encyclopedia of Management)',
+      'Hayes and Wheelwright matched process types to product volume and variety: job shops for low-volume custom work, batch for several products, assembly lines for high-volume standard products, and continuous flow for commodities. Most firms sit near the diagonal. (Read, Encyclopedia of Management on Hayes and Wheelwright)',
       'Off the diagonal, cost or flexibility suffers: a line making one-offs wastes setup time; a job shop making a commodity has unit costs too high to compete. (Inferred)',
       'Volume decides between processes. Process A costs {{c5.fA|$}} fixed and ${{c5.vA}} a unit; process B {{c5.fB|$}} fixed and ${{c5.vB}} a unit. They cost the same at ({{c5.fB|$}} − {{c5.fA|$}}) ÷ (${{c5.vA}} − ${{c5.vB}}) = {{c5.cross}} units. (Computed)',
       'At the planned {{c5.qPlan}} units, A costs {{c5.costA|$}} and B {{c5.costB|$}}: B saves {{c5.saveB|$}} a year. Below {{c5.cross}} units, A is cheaper. (Computed)'
     ] },
     { id: 'coo5-3', title: 'The focused factory', bok: 'C5.C', status: D, levels: [VP, C], sources: ['skinner', 'hayesW'], body: [
-      'Wickham Skinner argued in 1974 that a plant asked to serve too many products, markets and technologies performs worse than one focused on a narrow task. (Relayed, Skinner via INSEAD Knowledge)',
+      'Wickham Skinner argued in 1974 that a plant asked to serve too many products, markets and technologies performs worse than one focused on a narrow task. (Read, INSEAD Knowledge on Skinner)',
       'A plant cannot be best at low cost, fast delivery, high variety and new-product introduction at once. Focus picks the task and builds the plant around it. (Inferred, from Skinner)',
       'A plant-within-a-plant gets focus without a new building: separate lines, teams and measures for different tasks under one roof. (Inferred)',
-      'Focus erodes over time as products are added one at a time, each reasonable alone. A COO reviews the mix every few years. (Relayed, SupplyChainBrain via INSEAD Knowledge)'
+      'Many companies drift back toward the unfocused plant in the name of agility. Hewlett-Packard used yearly manufacturing policy reviews to keep needless complexity out. (Read, INSEAD Knowledge)'
     ] },
     { id: 'coo5-4', title: 'Capacity strategy and the cushion', bok: 'C5.D', status: D, levels: [VP, C], sources: ['hayesW'], body: [
       'Three timing choices for adding capacity: lead demand (add before it arrives), lag demand (add after it is proven) or match it in steps. Leading protects service and share; lagging protects cash and utilization. (Inferred, standard concept)',

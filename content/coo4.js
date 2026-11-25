@@ -9,17 +9,17 @@ module.exports = {
     { id: 'coo4-1', title: 'What to keep in house', bok: 'C4.A', status: D, levels: [VP, C], sources: ['hill', 'tcoMoser'], body: [
       'Keep in house the work that makes customers choose you, or that would be hard to get back once lost: proprietary processes, the skills behind a hard-won quality reputation, the steps tied closely to product design. (Inferred)',
       'Buy the work where suppliers have scale or skill you cannot match and where many capable suppliers exist. Commodity parts and standard services usually fall here. (Inferred)',
-      'Ask what the company competes on. If it wins orders on speed or customization, moving that work far away can cost more in lost orders than it saves in unit cost. (Relayed, Hill via Encyclopedia of Management, on order winners)',
+      'Ask what the company competes on. If it wins orders on speed or customization, moving that work far away can cost more in lost orders than it saves in unit cost. (Inferred, from Hill\'s order winners, which name speed and customization)',
       'Outsourcing is hard to reverse: the people, equipment and know-how leave. Treat it as a strategic choice, not a cost project. (Inferred)'
     ] },
     { id: 'coo4-2', title: 'Total landed cost: offshore vs. nearshore', bok: 'C4.B', status: D, levels: [DIR, VP], sources: ['tcoCommerce', 'tcoMoser'], body: [
-      'Landed cost adds freight, duty and the cost of carrying inventory in transit to the unit price. Total cost of ownership goes further: safety stock, quality, travel, warranty, intellectual property risk and the cost of slow response. (Relayed, Moser via Assembly; US Commerce ACE tool)',
+      'Landed cost adds freight, duty and the cost of carrying inventory in transit to the unit price. Total cost of ownership goes further: travel, warranty, intellectual property loss, stock-outs from long delivery times, and the cost of having manufacturing far from engineering. (Read, Moser via Assembly; US Commerce ACE tool)',
       'An offshore supplier quotes ${{c4.offUnit|2}}; freight is ${{c4.offFreight|2}} and duty {{c4.offDutyRate|%0}} (${{c4.offDuty|2}}). With {{c4.offDays}} days in transit at a {{c4.carry|%0}} annual carrying rate on price, freight and duty, pipeline cost is ${{c4.offPipe|2}}. Landed: ${{c4.offTotal|2}}. (Computed)',
       'A nearshore supplier quotes ${{c4.nearUnit|2}} with ${{c4.nearFreight|2}} freight, no duty and {{c4.nearDays}} days in transit (${{c4.nearPipe|2}}). Landed: ${{c4.nearTotal|2}}. The offshore quote was ${{c4.priceGap|2}} cheaper; landed, it is ${{c4.gapU|2}} dearer, about {{c4.gapYrK|$}} a year on {{c4.vol}} units. (Computed)',
-      'This counts in-transit stock only. Longer lead times also need more safety stock, which widens the gap further. (Inferred)'
+      'This counts in-transit stock only. Longer lead times also push a firm to hold more stock, which widens the gap further. The {{c4.carry|%0}} carrying rate is the rough guide the same source cites. (Read, US Commerce ACE tool)'
     ] },
     { id: 'coo4-3', title: 'The risks a unit price hides', bok: 'C4.C', status: D, levels: [VP, C], sources: ['tcoMoser', 'tcoCommerce'], body: [
-      'Long supply lines slow response to demand changes and engineering changes; a design fix takes weeks to reach the line. (Relayed, Moser via Assembly)',
+      'Long supply lines slow response to demand changes and engineering changes; a design fix takes weeks to reach the line. (Inferred)',
       'Distance raises quality risk: defects are found after a long voyage, and the stock already on the water carries the same defect. (Inferred)',
       'Concentration risk grows when one region or one supplier makes a critical part. A disruption there stops the line. (Inferred)',
       'Put a value on each risk where you can, and state the rest plainly. A number of zero for a known risk is still a choice. (Inferred)'
@@ -31,7 +31,7 @@ module.exports = {
       'Watch for the slow loss of in-house knowledge. If nobody left can judge the supplier\'s process, the company can no longer manage it. (Inferred)'
     ] },
     { id: 'coo4-5', title: 'Reshoring and dual sourcing', bok: 'C4.E', status: D, levels: [VP, C], sources: ['tcoMoser', 'tcoCommerce'], body: [
-      'Reshoring brings work back closer to the market. The case usually rests on total cost of ownership plus speed and risk, not on unit cost alone. (Relayed, Moser via Assembly)',
+      'Reshoring brings work back closer to the market. The case usually rests on total cost of ownership plus speed and risk, not on unit cost alone. (Read, Moser via Assembly)',
       'Dual sourcing splits a part between two suppliers, often one far and one near. It costs more (lower volume each, two qualifications) and buys resilience and a price check. (Inferred)',
       'Present these choices to the board as cost plus risk: the landed-cost gap, the inventory and cash effect, and what a disruption would cost with and without the change. (Inferred)',
       'Capacity and skills are often the limit on reshoring, so plan the workforce and the ramp as part of the decision. (Inferred)'

@@ -8,15 +8,15 @@ module.exports = {
   lessons: [
     { id: 'coo1-1', title: 'The operating rhythm: day, week, month, quarter', bok: 'C1.A', status: D, levels: [DIR, VP, C], sources: ['leanDm', 'tiered'], body: [
       'An operating cadence is the fixed calendar of reviews that runs the business: what is looked at, by whom, how often, and what decisions each meeting may take. Each layer looks at a longer horizon than the one below it. (Inferred, standard practice)',
-      'A common pattern: daily huddles on safety, quality, delivery and yesterday\'s misses; a weekly operations review on trends and open actions; a monthly business review on the P&L, the forecast and S&OP decisions; a quarterly review on strategy, capital and the board update. (Relayed, Lean Blog and KAIZEN Institute)',
+      'A common pattern: daily huddles on safety, quality, delivery and yesterday\'s misses; a weekly operations review on trends and open actions; a monthly business review on the P&L, the forecast and S&OP decisions; a quarterly review on strategy, capital and the board update. (Read, Lean Blog for the daily huddles and monthly reviews; the weekly and quarterly layers are Inferred)',
       'Each meeting needs an owner, a fixed agenda, standard inputs that arrive before the meeting, and a written list of decisions and actions. A meeting that only shares information can usually be replaced by a report. (Inferred)',
       'The cadence is a design choice. Too many meetings eat the leaders\' week; too few let problems age between reviews. A COO prunes meetings that no longer change a decision. (Inferred)'
     ] },
     { id: 'coo1-2', title: 'Tiered daily management and escalation', bok: 'C1.B', status: D, levels: [DIR, VP], sources: ['tiered', 'leanDm'], body: [
-      'In tiered daily management, short stand-up meetings run in sequence each morning: teams first (tier 1), then area or shift leads (tier 2), then department managers (tier 3), then the plant or site leadership (tier 4). Each tier looks at its own board of measures against target. (Relayed, KAIZEN Institute)',
-      'Problems move up only when the level that found them cannot solve them within an agreed window, such as one shift. The site leader hears about a supplier shortage the same morning instead of at the month-end review. (Relayed, KAIZEN Institute and Lean Blog)',
+      'In tiered daily management, short stand-up meetings run in sequence each day, at the same time: teams first (tier 1), then area or shift leads (tier 2), then department managers (tier 3), then the plant or site leadership (tier 4). Each tier looks at its own board of measures against target. (Read, KAIZEN Institute)',
+      'Problems move up only when the level that found them cannot solve them, and they move up the same day with a named owner. The site leader hears about a supplier shortage the same morning instead of at the month-end review. (Read, KAIZEN Institute and Lean Blog)',
       'Escalation needs a return path: the level above answers with a decision, resources or an owner. If the front line raises problems and nothing comes back, people stop raising them. (Inferred)',
-      'The huddle agrees actions; it does not solve problems in the meeting. Problems that need analysis go to a separate working session with a named owner and date. (Relayed, KAIZEN Institute)'
+      'The huddle agrees actions; it does not solve problems in the meeting. Problems that need analysis go to a separate working session with a named owner and date. (Read, KAIZEN Institute and Lean Blog)'
     ] },
     { id: 'coo1-3', title: 'Reading the monthly review: volume and cost variances', bok: 'C1.C', status: D, levels: [VP, C], sources: ['leanDm'], body: [
       'A plant budgeted {{c1.bUnits}} units at ${{c1.price}} each with a unit cost of ${{c1.bCost}}. It shipped {{c1.aUnits}} units at a unit cost of ${{c1.aCost}}. Revenue came in {{c1.revShort|$}} short and margin {{c1.marginShort|$}} short. (Computed)',
@@ -26,9 +26,9 @@ module.exports = {
     ] },
     { id: 'coo1-4', title: 'A measure tree and OEE', bok: 'C1.D', status: D, levels: [DIR, VP], sources: ['oeeIbm', 'oeeVorne'], body: [
       'A measure tree links what the board sees to what the floor controls. Gross margin breaks into price, volume and unit cost; unit cost breaks into labor, material and overhead per unit; labor per unit depends on throughput, which depends on equipment effectiveness. (Inferred)',
-      'Overall equipment effectiveness (OEE) is availability × performance × quality: the share of planned time that produces good parts at full speed. (Relayed, IBM and Vorne)',
+      'Overall equipment effectiveness (OEE) is availability × performance × quality: the share of planned time that produces good parts at full speed. (Read, IBM and Vorne)',
       'With availability {{c1.avail|%0}}, performance {{c1.perf|%0}} and quality {{c1.qual|%0}}, OEE is {{c1.oee|%1}}. Averaging the three ({{c1.oeeAvg|%1}}) overstates it. Raising performance to {{c1.perf2|%0}} lifts OEE to {{c1.oee2|%1}}. (Computed)',
-      'Look at the three factors before the total: the same OEE can come from long changeovers (availability) or from slow cycles (performance), and the fixes differ. (Relayed, Vorne)'
+      'Look at the three factors before the total: the same OEE can come from long changeovers (availability) or from slow cycles (performance), and the fixes differ. (Read, Vorne)'
     ] },
     { id: 'coo1-5', title: 'The operations update for the CEO and board', bok: 'C1.E', status: D, levels: [VP, C], sources: ['leanDm'], body: [
       'A board update from operations answers four questions: are we safe, are customers getting what we promised, are we on the cost and cash plan, and what decisions or risks need the board. Detail stays in the appendix. (Inferred)',

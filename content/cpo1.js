@@ -10,7 +10,7 @@ module.exports = {
       'A Chief Procurement Officer owns how the company buys: the policy, the people, the systems and the supplier base for direct materials (in the product) and indirect spend (everything else). (Inferred)',
       'The role answers to the CFO or COO in most companies. Its results show up in cost of goods, operating expense, working capital and supply risk. (Inferred)',
       'The CPO\'s main tools are category strategies, supplier management, contract terms and the rules for who may commit spend. Negotiation craft itself is covered in Critical Path. (Inferred)',
-      'Procurement earns a seat at the table when finance trusts its numbers. Credibility depends on agreed savings definitions more than on the size of the claims. (Relayed, Stampli)'
+      'Procurement earns a seat at the table when finance trusts its numbers. Validation by finance, not procurement alone, is what makes savings believable. (Read, Stampli)'
     ] },
     { id: 'cpo1-2', title: 'Spend under management and category strategy', bok: 'P1.B', status: D, levels: [DIR, VP], sources: ['gepSave'], body: [
       'Spend under management is the share of spend that goes through procurement\'s process: sourced, contracted and bought on agreed terms. Of ${{cp1.spend}} million of spend, {{cp1.sum}} million under management is {{cp1.sumPct|%0}}. (Computed)',
@@ -19,10 +19,10 @@ module.exports = {
       'Segment categories by spend and supply risk. High-spend, low-risk categories suit competition; low-spend, high-risk ones need secured supply more than lower prices. (Inferred, standard segmentation)'
     ] },
     { id: 'cpo1-3', title: 'Savings finance will believe', bok: 'P1.C', status: D, levels: [VP, C], sources: ['gepSave', 'stampliSave'], body: [
-      'Hard savings are a reduction from the prior price for the same or similar item, showing up in the budget. Cost avoidance is a future increase that was prevented; it protects the budget but does not shrink it. (Relayed, GEP and Stampli)',
+      'Hard savings are a reduction from the prior price for the same or similar item, showing up in the budget. Cost avoidance is a future increase that was prevented; it protects the budget but does not shrink it. (Read, GEP and Stampli)',
       'A part bought last year at ${{cp1.oldP}} is now ${{cp1.newP}}, on {{cp1.vol}} units: {{cp1.hard|$}} of hard savings. The market rose {{cp1.mktRise|%0}} to ${{cp1.mktP}}; taking that market price as the baseline, the deal avoided {{cp1.avoid|$}}, of which {{cp1.avoidOnly|$}} is avoidance only. (Computed)',
-      'Report the two separately. Folding avoidance into savings is the most common reason finance stops trusting procurement\'s numbers. (Relayed, Stampli)',
-      'Agree the baseline and the definitions with finance before reporting, and track whether negotiated prices are actually paid. (Relayed, Stampli)'
+      'Report the two separately. When finance sees claimed savings that never reduce a budget, the cause is usually avoidance reported as hard savings. (Read, Stampli)',
+      'Agree the baseline and the definitions with finance before reporting, tie each saving to the budget line it should reduce, and check that the reforecast shows it. (Read, Stampli)'
     ] },
     { id: 'cpo1-4', title: 'Supplier risk and resilience', bok: 'P1.D', status: D, levels: [DIR, VP, C], sources: ['tcoMoser', 'gepSave'], body: [
       'Map the suppliers behind critical parts, including the second tier where a single source hides. Many disruptions start below the suppliers the company deals with directly. (Inferred)',
@@ -33,7 +33,7 @@ module.exports = {
     { id: 'cpo1-5', title: 'Procurement\'s value story to the board', bok: 'P1.E', status: D, levels: [VP, C], sources: ['stampliSave', 'gepSave'], body: [
       'A simple return measure divides savings by procurement\'s cost: ${{cp1.savings}} million of savings on a ${{cp1.cost}} million function is a {{cp1.roi}}-to-1 return. It is only as good as the savings definition. (Computed)',
       'Negotiated savings are not realized savings. If {{cp1.realRate|%0}} of the ${{cp1.savings}} million shows up in actual spend, realized savings are ${{cp1.realized|1}} million. Report the realized number. (Computed)',
-      'Add the value that is not a price: supply secured during shortages, working capital from better terms, risk reduced, and supplier innovation brought into products. (Relayed, GEP)',
+      'Add the value that is not a price: supply secured during shortages, working capital from better terms, risk reduced, and supplier innovation brought into products. (Inferred)',
       'Tie the story to the company\'s goals: margin, cash, growth and resilience, in that company\'s order. (Inferred)'
     ] }
   ],

@@ -12,13 +12,13 @@ module.exports = {
       'Choose the model that fits the order winners. A business that wins on local service leans toward plant-led; one that wins on cost leans toward central. (Inferred)'
     ] },
     { id: 'coo6-2', title: 'Spans and layers', bok: 'C6.B', status: D, levels: [DIR, VP, C], sources: ['spans', 'bainSpans'], body: [
-      'Span of control is how many people report directly to a manager; layers are the management levels between the front line and the top. Narrow spans add layers, slow decisions and add cost. (Relayed, McKinsey and Bain)',
+      'Span of control is how many people report directly to a manager; layers are the management levels between the front line and the top. Narrow spans add layers, slow decisions and add cost. (Read, McKinsey and Bain)',
       'With {{c6.front}} front-line staff and a span of {{c6.span8}}, the company needs {{c6.l8a}} first-line managers, {{c6.l8b}} above them, {{c6.l8c}} above those and one head: {{c6.mgr8}} managers in {{c6.layers8}} layers. (Computed)',
       'At a span of {{c6.span12}}, it needs {{c6.l12a}}, {{c6.l12b}} and one: {{c6.mgr12}} managers in {{c6.layers12}} layers. That is {{c6.mgrCut}} fewer roles and one fewer layer. If all those roles go and pay for the rest stays the same, the saving is about {{c6.costCut|$}} a year at {{c6.mgrCost|$}} each. (Computed)',
-      'There is no single right span. Managers of routine, similar work can take wide spans; those coaching new or varied work need narrower ones. (Relayed, McKinsey)'
+      'There is no single right span. Managers of routine, similar work can take wide spans; those coaching new or varied work need narrower ones. (Read, McKinsey)'
     ] },
     { id: 'coo6-3', title: 'Decision rights between the center and the plants', bok: 'C6.C', status: D, levels: [VP, C], sources: ['bainSpans'], body: [
-      'Write down who decides, who must agree, and who is only informed for the decisions that recur: capital requests, supplier changes, schedule changes, hiring. Unclear rights cause either delay or quiet conflict. (Relayed, Bain on decision rights)',
+      'Write down who decides, who must agree, and who is only informed for the decisions that recur: capital requests, supplier changes, schedule changes, hiring. Unclear rights cause either delay or quiet conflict. (Inferred; Bain pairs spans and layers with clearer decision rights)',
       'Push decisions to the lowest level that has the information and bears the result. Keep at the center only what needs scale or one standard. (Inferred)',
       'Set limits in money and risk: a plant manager approves spend up to a threshold; above it, the regional or central leader decides. (Inferred)',
       'Review the rights when the organization changes. Reorganizing boxes without moving decisions changes little. (Inferred)'
